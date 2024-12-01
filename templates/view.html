@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>View Page</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='view.css') }}">
+    <style>
+        :root {
+            --proxy-split: {{ proxy_split }}%; /* Dynamic split */
+        }
+    </style>
+</head>
+<body>
+    {% if proxy_split == 0 %}
+        <iframe src="https://www.google.com"></iframe>
+    {% elif proxy_split == 100 %}
+        <iframe src="https://www.google.com"></iframe>
+    {% else %}
+        <div class="container dual-proxy">
+            <iframe src="https://www.google.com"></iframe>
+            <iframe src="https://www.google.com"></iframe>
+        </div>
+    {% endif %}
+</body>
+</html>

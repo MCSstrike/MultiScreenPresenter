@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Control Page</title>
+    <style>
+        /* Default slider style */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 150px; /* Reduced width */
+            height: 5px; /* Small height for a simple look */
+            border-radius: 5px;
+            background: #007bff; /* Default slider color (blue) */
+            outline: none;
+            transition: background 0.3s ease;
+            position: relative;
+        }
+
+        /* Slider thumb style */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #fff;
+            border: 1px solid #007bff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 15px;
+            height: 15px;
+            background: #fff;
+            border: 1px solid #007bff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Gray slider background for invalid ranges */
+        input[type="range"].gray {
+            background: gray;
+        }
+
+        input[type="range"].gray::-webkit-slider-thumb {
+            border-color: gray;
+        }
+
+        input[type="range"].gray::-moz-range-thumb {
+            border-color: gray;
+        }
+
+        /* Value display above the slider */
+        .slider-container {
+            position: relative;
+            width: 150px;
+        }
+
+        .slider-value {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            transform: translateX(-50%);
+            font-size: 12px;
+            font-weight: bold;
+            color: #000;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 2px 4px;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Control Page</h1>
+    <form method="POST">
+        <label>
+            Proxy Split (0%, 20-80%, 100%):
+            <div class="slider-container">
+                <div id="sliderValue" class="slider-value">50%</div>
+                <input
+                    type="range"
+                    id="proxySplit"
+                    name="proxy_split"
+                    value="{{ proxy_split }}"
+                    min="0"
+                    max="100"
+                    step="5"
+                    oninput="handleSliderInteraction(this)"
+                    onchange="validateSlider(this)"
+                >
+            </div>
+        </label>
+        <br>
+        <button type="submit">Update</button>
+    </form>
+    <p>Current Mode: {{ proxy_count }} Proxy/Proxies</p>
+    <p>Current Split: {{ proxy_split }}%</p>
+
+    <script>
+        // Store the last valid value
+        let lastValidValue = {{ proxy_split }};
+
+        function handleSliderInteraction(slider) {
+            const value = parseInt(slider.value, 10);
+
+            // Prevent slider from moving into invalid ranges
+            if (value > 0 && value < 20) {
+                slider.value = value < 10 ? 0 : 20; // Snap to 0 or 20
+            } else if (value > 80 && value < 100) {
+                slider.value = value < 90 ? 80 : 100; // Snap to 80 or 100
+            }
+
+            // Update the displayed value
+            const sliderValue = document.getElementById('sliderValue');
+            sliderValue.innerText = `${slider.value}%`;
+
+            // Position the value display dynamically
+            const percentage = (slider.value - slider.min) / (slider.max - slider.min);
+            const offset = percentage * slider.offsetWidth - slider.offsetWidth / 2;
+            sliderValue.style.left = `${slider.offsetWidth / 2 + offset}px`;
+
+            // Change color dynamically in invalid ranges
+            if ((value > 0 && value < 20) || (value > 80 && value < 100)) {
+                slider.classList.add('gray');
+            } else {
+                slider.classList.remove('gray');
+                lastValidValue = value; // Update last valid value for valid stops
+            }
+        }
+
+        function validateSlider(slider) {
+            const value = parseInt(slider.value, 10);
+
+            // Ensure the slider stops only at valid points
+            if (value > 0 && value < 20) {
+                slider.value = value < 10 ? 0 : 20; // Snap to 0 or 20
+            } else if (value > 80 && value < 100) {
+                slider.value = value < 90 ? 80 : 100; // Snap to 80 or 100
+            } else {
+                lastValidValue = value; // Update last valid value for valid stops
+            }
+
+            // Update the displayed value
+            const sliderValue = document.getElementById('sliderValue');
+            sliderValue.innerText = `${slider.value}%`;
+
+            // Position the value display dynamically
+            const percentage = (slider.value - slider.min) / (slider.max - slider.min);
+            const offset = percentage * slider.offsetWidth - slider.offsetWidth / 2;
+            sliderValue.style.left = `${slider.offsetWidth / 2 + offset}px`;
+
+            slider.classList.remove('gray');
+        }
+
+        // Initialize the slider behavior on page load
+        document.addEventListener("DOMContentLoaded", () => {
+            const slider = document.getElementById('proxySplit');
+            handleSliderInteraction(slider);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer</title>
+</head>
+<body>
+    <h1>Timer Page</h1>
+    {% if running %}
+        <h2>Time Remaining: {{ duration - elapsed | round(2) }} seconds</h2>
+    {% else %}
+        <h2>Timer Paused</h2>
+        <p>Elapsed Time: {{ elapsed | round(2) }} seconds</p>
+    {% endif %}
+</body>
+</html>
