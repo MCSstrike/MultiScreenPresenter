@@ -12,14 +12,59 @@
 </head>
 <body>
     {% if proxy_split == 0 %}
-        <iframe src="https://www.google.com"></iframe>
+        <iframe src="{{ url2 }}" style="width: 100%; height: 100%; border: none;"></iframe>
     {% elif proxy_split == 100 %}
-        <iframe src="https://www.google.com"></iframe>
+        <iframe src="{{ url1 }}" style="width: 100%; height: 100%; border: none;"></iframe>
     {% else %}
         <div class="container dual-proxy">
-            <iframe src="https://www.google.com"></iframe>
-            <iframe src="https://www.google.com"></iframe>
+            <iframe src="{{ url1 }}" style="width: var(--proxy-split); height: 100%; border: none;"></iframe>
+            <iframe src="{{ url2 }}" style="width: calc(100% - var(--proxy-split)); height: 100%; border: none;"></iframe>
         </div>
     {% endif %}
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <script>
+const socket = io(); // Initialize WebSocket connection
+
+    // Listen for updates to proxy URLs
+    socket.on("update_urls", (data) => {
+        const url1 = data.url1;
+        const url2 = data.url2;
+
+        // Dynamically update the iframes
+        const iframes = document.querySelectorAll("iframe");
+        if (iframes.length === 1) {
+            iframes[0].src = (data.proxy_split === 0) ? url2 : url1;
+        } else if (iframes.length === 2) {
+            iframes[0].src = url1;
+            iframes[1].src = url2;
+        }
+    });
+
+    // Listen for updates to the proxy split
+    socket.on("update_split", (data) => {
+        const proxySplit = data.proxy_split;
+        const proxyCount = data.proxy_count;
+
+        const url1 = "{{ url1 }}"; // Use the server-provided URL 1
+        const url2 = "{{ url2 }}"; // Use the server-provided URL 2
+
+        // Dynamically update the view based on proxy count and split
+        const body = document.body;
+        body.innerHTML = ""; // Clear existing content
+
+        if (proxySplit === 0) {
+            body.innerHTML = `<iframe src="${url2}" style="width: 100%; height: 100%; border: none;"></iframe>`;
+        } else if (proxySplit === 100) {
+            body.innerHTML = `<iframe src="${url1}" style="width: 100%; height: 100%; border: none;"></iframe>`;
+        } else {
+            body.innerHTML = `
+                <div class="container dual-proxy">
+                    <iframe src="${url1}" style="width: ${proxySplit}%; height: 100%; border: none;"></iframe>
+                    <iframe src="${url2}" style="width: calc(100% - ${proxySplit}%); height: 100%; border: none;"></iframe>
+                </div>
+            `;
+        }
+    });
+    </script>
 </body>
 </html>
