@@ -15,7 +15,9 @@ socketio = SocketIO(app)
 view_config = {
     "proxy_count": 2,                      # Default to 2 proxies
     "proxy_split": 50,                     # Default split: 50% / 50%
+    "url1_name": "timer", # Default URL for Proxy 1
     "url1": "http://localhost:5000/timer", # Default URL for Proxy 1
+    "url2_name": "timer",  # Default URL for Proxy 2
     "url2": "http://localhost:5000/timer"  # Default URL for Proxy 2
 }
 
@@ -38,18 +40,28 @@ def home():
 @app.route("/view")
 def view():
     """
-    Renders the view page with the number of proxies and the split ratio
+    Renders the view page with the number of proxies, the split ratio, and the URLs.
     """
-    proxy_count = view_config["proxy_count"] # Gets the current proxy_count
-    proxy_split = view_config["proxy_split"] # Gets the current proxy_split
-    url1 = view_config["url1"]               # Gets the current URL 1
-    url2 = view_config["url2"]               # Gets the current URL 2
-    # Returns the current /view config
+    proxy_count = view_config["proxy_count"]
+    proxy_split = view_config["proxy_split"]
+    url1_name = request.args.get("url1_name", view_config["url1_name"])
+    url1 = request.args.get("url1", view_config["url1"])
+    url2_name = request.args.get("url2_name", view_config["url2_name"])
+    url2 = request.args.get("url2", view_config["url2"])
+
+    # Update the view_config with the new URLs and names if provided
+    view_config["url1_name"] = url1_name
+    view_config["url1"] = url1
+    view_config["url2_name"] = url2_name
+    view_config["url2"] = url2
+
     return render_template(
         "view.html",
         proxy_count=proxy_count,
         proxy_split=proxy_split,
+        url1_name=url1_name,
         url1=url1,
+        url2_name=url2_name,
         url2=url2
     )
 
@@ -149,7 +161,12 @@ def get_current_split():
 def update_urls():
     data = request.get_json()
     url1 = data.get("url1")
+    url1_name = data.get("url1_name")
     url2 = data.get("url2")
+    url2_name = data.get("url2_name")
+
+    view_config["url1_name"] = url1_name
+    view_config["url2_name"] = url2_name
 
     if url1 != view_config["url1"]:
         view_config["url1"] = url1
@@ -173,11 +190,11 @@ def handle_refresh_url(data):
 
 @app.route("/get_current_urls", methods=["GET"])
 def get_current_urls():
-    print("URL1: ", view_config["url1"])
-    print("URL1: ", view_config["url1"])
     return {
         "url1": view_config["url1"],
-        "url2": view_config["url2"]
+        "url1_name": view_config["url1_name"],
+        "url2": view_config["url2"],
+        "url2_name": view_config["url2_name"]
     }
 
 
@@ -212,7 +229,6 @@ def handle_control_timer(data):
 def handle_control_mode(data):
     selected_mode = data.get("mode")
     timer_state["mode"] = selected_mode  # Store the selected mode
-    print(f"Mode changed to {selected_mode}")
     socketio.emit("update_mode", {"mode": selected_mode})
 
 

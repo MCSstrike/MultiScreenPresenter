@@ -14,15 +14,26 @@ document.addEventListener("DOMContentLoaded", () => {
         .catch(error => console.error("Error fetching current proxy split:", error
     ));
 
-    // Fetch the current URLs from the server when the page loads
-    fetch("/get_current_urls")
-        .then(response => response.json())
-        .then(data => {
-            setDropdownValue("url1", data.url1);
-            setDropdownValue("url2", data.url2);
-        })
-        .catch(error => console.error("Error fetching current URLs:", error
-    ));
+    // Function to fetch current URLs from the server
+    async function fetchCurrentUrls() {
+        try {
+            const response = await fetch("/get_current_urls");
+            const data = await response.json();
+            const url1Name = data.url1_name;
+            const url1 = data.url1;
+            const url2Name = data.url2_name;
+            const url2 = data.url2;
+
+            // Set the dropdown values based on the URL names and values
+            setDropdownValue(1, url1Name, url1);
+            setDropdownValue(2, url2Name, url2);
+        } catch (error) {
+            console.error("Error fetching current URLs:", error);
+        }
+    }
+
+    // Fetch current URLs when the page loads
+    fetchCurrentUrls();
 
     startButton.addEventListener("click", () => {
         fetch("/control_timer", {
@@ -85,8 +96,8 @@ document.addEventListener("DOMContentLoaded", () => {
     url2Input.addEventListener("change", () => updateUrlInput(2));
 
     // Initialize the state of URL inputs
-    updateUrlInput(1); // Initialize URL 1
-    updateUrlInput(2); // Initialize URL 2
+    //updateUrlInput(1); // Initialize URL 1
+    //updateUrlInput(2); // Initialize URL 2
 });
 
 const websites = [
@@ -195,41 +206,40 @@ function updateUrlInput(urlNumber) {
 }
 
 function updateProxyUrls() {
+    const url1Name = document.getElementById("url1-dropdown").value;
     const url1 = document.getElementById("url1-input").value;
+    const url2Name = document.getElementById("url2-dropdown").value;
     const url2 = document.getElementById("url2-input").value;
 
-    // Send the updated URLs to the server
+    // Send the updated URLs and names to the server
     fetch("/update_urls", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url1, url2 }),
+        body: JSON.stringify({ url1_name: url1Name, url1, url2_name: url2Name, url2 }),
     })
         .then((response) => response.json())
         .then((data) => {
-            console.log("URLs updated:", data);
-            // Refresh the /view page in the iframe
+            // Refresh the /view page in the iframe with the updated URLs and names
             const viewIframe = document.getElementById("viewIframe");
             if (viewIframe) {
                 // Add a cache-busting query parameter to force reload
                 const cacheBuster = new Date().getTime();
-                viewIframe.src = `/view?embedded=true&cache=${cacheBuster}`;
+                viewIframe.src = `/view?embedded=true&cache=${cacheBuster}&url1_name=${encodeURIComponent(url1Name)}&url1=${encodeURIComponent(url1)}&url2_name=${encodeURIComponent(url2Name)}&url2=${encodeURIComponent(url2)}`;
             }
         })
         .catch((error) => console.error("Error updating URLs:", error));
 }
 
-function setDropdownValue(urlNumber, url) {
+function setDropdownValue(urlNumber, urlName, url) {
     const dropdown = document.getElementById(`url${urlNumber}-dropdown`);
     const input = document.getElementById(`url${urlNumber}-input`);
 
-    const site = websites.find(site => site.url === url);
-    if (site) {
-        dropdown.value = site.value;
-        input.value = site.url;
-        input.disabled = site.value !== "custom";
-    } else {
-        dropdown.value = "custom";
-        input.value = url;
+    dropdown.value = urlName;
+    input.value = url;
+
+    if (urlName === "custom") {
         input.disabled = false;
+    } else {
+        input.disabled = true;
     }
 }
