@@ -232,5 +232,10 @@ def handle_control_mode(data):
     socketio.emit("update_mode", {"mode": selected_mode})
 
 
+@app.route("/get_current_mode", methods=["GET"])
+def get_current_mode():
+    return {"mode": timer_state["mode"]}
+
+
 if __name__ == "__main__":
     socketio.run(app, debug=True, host="0.0.0.0", port=5000)

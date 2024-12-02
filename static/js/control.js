@@ -4,6 +4,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const slider = document.getElementById('proxySplit');
     const sliderValue = document.getElementById("sliderValue");
 
+    const modeSelect = document.getElementById("modeSelect");
+    const timeInput = document.getElementById("setTimerInput");
+    const setTimerButton = document.getElementById("setTimerButton");
+    const startButton = document.getElementById("startButton");
+    const pauseButton = document.getElementById("pauseButton");
+    const resetButton = document.getElementById("resetButton");
+
     // Fetch the current slider value from the server when the page loads
     fetch("/get_current_split")
         .then(response => response.json())
@@ -13,6 +20,39 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .catch(error => console.error("Error fetching current proxy split:", error
     ));
+
+    // Fetch the current mode from the server when the page loads
+    fetch("/get_current_mode")
+        .then(response => response.json())
+        .then(data => {
+            modeSelect.value = data.mode;
+            handleModeChange();
+        })
+        .catch(error => console.error("Error fetching current mode:", error
+    ));
+
+    // Function to set the mode
+    function setMode(event) {
+        const selectedMode = modeSelect.value;
+        socket.emit("control_mode", { mode: selectedMode });
+        handleModeChange();
+    }
+
+    // Function to handle mode change
+    function handleModeChange() {
+        const selectedMode = modeSelect.value;
+        const isClockMode = selectedMode === "clock";
+        const isCountUpMode = selectedMode === "countup";
+
+        timeInput.disabled = isClockMode || isCountUpMode;
+        setTimerButton.disabled = isClockMode || isCountUpMode;
+        startButton.disabled = isClockMode;
+        pauseButton.disabled = isClockMode;
+        resetButton.disabled = isClockMode;
+    }
+
+    // Event listener for the mode dropdown
+    modeSelect.addEventListener("change", setMode);
 
     // Function to fetch current URLs from the server
     async function fetchCurrentUrls() {
@@ -54,19 +94,25 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Event listener for the set timer button
-    const setTimerButton = document.getElementById("setTimerButton");
     setTimerButton.addEventListener("click", setTimer);
 
-    // Function to set the mode
-    function setMode(event) {
-        const modeSelect = document.getElementById("modeSelect");
-        const selectedMode = modeSelect.value;
-        socket.emit("control_mode", { mode: selectedMode });
-    }
+    // Event listener for the start button
+    startButton.addEventListener("click", (event) => {
+        event.preventDefault(); // Prevent form submission
+        socket.emit("control_timer", { action: "start" });
+    });
 
-    // Event listener for the mode dropdown
-    const modeSelect = document.getElementById("modeSelect");
-    modeSelect.addEventListener("change", setMode);
+    // Event listener for the pause button
+    pauseButton.addEventListener("click", (event) => {
+        event.preventDefault(); // Prevent form submission
+        socket.emit("control_timer", { action: "pause" });
+    });
+
+    // Event listener for the reset button
+    resetButton.addEventListener("click", (event) => {
+        event.preventDefault(); // Prevent form submission
+        socket.emit("control_timer", { action: "reset" });
+    });
 
     // Listen for refresh URL 1 event
     socket.on("refresh_url1", (data) => {

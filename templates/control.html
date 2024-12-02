@@ -54,13 +54,15 @@
                 <button onclick="setTimer()">Set Time</button>
             </div>-->
             <select id="modeSelect">
-                <option value="clock">Clock</option>
-                <option value="countup">Count Up</option>
-                <option value="countdown">Count Down</option>
+                <option value="clock" {{ 'selected' if mode == 'clock' else '' }}>Clock</option>
+                <option value="countup" {{ 'selected' if mode == 'countup' else '' }}>Count Up</option>
+                <option value="countdown" {{ 'selected' if mode == 'countdown' else '' }}>Count Down</option>
             </select>
             <input type="number" id="setTimerInput" min="0">
-            <button id="startButton" {{ 'disabled' if mode == 'clock' else '' }}>Start</button>
-            <button id="setTimerButton">Set Timer</button>
+            <button id="setTimerButton">Set</button>
+            <button id="startButton">Start</button>
+            <button id="pauseButton">Pause</button>
+            <button id="resetButton">Reset</button>
         </div>
     </form>
 
