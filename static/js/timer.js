@@ -13,8 +13,15 @@ document.addEventListener("DOMContentLoaded", () => {
         updateDisplay();
     });
 
+    // Listen for timer updates from the server
+    socket.on("update_timer", (data) => {
+        const timeLeft = data.duration;
+        const isPaused = !data.running;
+        updateDisplay(timeLeft, isPaused);
+    });
+
     // Function to update the display based on the current mode
-    function updateDisplay(timeLeft = 0) {
+    function updateDisplay(timeLeft = 0, isPaused = true) {
         const timerDisplay = document.getElementById("timerDisplay");
         const modeElement = document.getElementById("mode");
         clearInterval(timerInterval);
@@ -25,9 +32,15 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (currentMode === "countup") {
             modeElement.textContent = "Count Up";
             timerDisplay.textContent = formatTime(timeLeft);
+            if (!isPaused) {
+                startCountUp(timeLeft);
+            }
         } else if (currentMode === "countdown") {
             modeElement.textContent = "Count Down";
             timerDisplay.textContent = formatTime(timeLeft);
+            if (!isPaused) {
+                startCountDown(timeLeft);
+            }
         }
     }
 
@@ -40,18 +53,41 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 1000); // Update every second
     }
 
+    // Function to start counting up
+    function startCountUp(initialTime) {
+        let elapsedTime = initialTime;
+        timerInterval = setInterval(() => {
+            elapsedTime++;
+            const timerDisplay = document.getElementById("timerDisplay");
+            timerDisplay.textContent = formatTime(elapsedTime);
+        }, 1000); // Update every second
+    }
+
+    // Function to start counting down
+    function startCountDown(initialTime) {
+        let timeLeft = initialTime;
+        timerInterval = setInterval(() => {
+            if (timeLeft > 0) {
+                timeLeft--;
+                const timerDisplay = document.getElementById("timerDisplay");
+                timerDisplay.textContent = formatTime(timeLeft);
+            } else {
+                clearInterval(timerInterval);
+            }
+        }, 1000); // Update every second
+    }
+
     // Function to format time in HH:MM:SS.MM format
     function formatTime(seconds, milliseconds = 0) {
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         const remainingSeconds = seconds % 60;
-        const ms = Math.floor(milliseconds / 10); // Convert milliseconds to two digits
 
         if (currentMode === "clock") {
             return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
         } else {
-            const formattedTime = `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
-            return hours > 0 ? `${String(hours).padStart(2, '0')}:${formattedTime}` : formattedTime;
+            const formattedTime = `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+            return hours > 0 ? `${String(hours)}:${formattedTime}` : formattedTime;
         }
     }
 

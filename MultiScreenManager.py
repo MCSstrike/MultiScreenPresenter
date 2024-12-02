@@ -23,7 +23,7 @@ view_config = {
 
 # Default timer state
 timer_state = {
-    "time_left": 600,  # Default 10 minutes (600 seconds)
+    "duration": 600,  # Default 10 minutes (600 seconds)
     "running": False,   # Timer is paused by default
     "mode": "clock"    # Default mode
 }
@@ -71,7 +71,13 @@ def timer():
     """
     Render the Timer Page.
     """
-    return render_template("timer.html", time_left=timer_state["time_left"], mode=timer_state["mode"])
+    return render_template(
+        "timer.html",
+        duration=timer_state["duration"],
+        mode=timer_state["mode"],
+        running=timer_state["running"],
+        start_time=timer_state.get("start_time", 0.0)
+    )
 
 # /update_timer page rules
 @app.route("/update_timer", methods=["POST"])
@@ -80,13 +86,9 @@ def update_timer():
     Update the timer state (time left and running status) based on input data.
     Broadcast the updated state to all connected clients.
     """
-    data = request.get_json() # Get current timer
-    timer_state["time_left"] = int(data.get("time_left", timer_state["time_left"]))
-    timer_state["running"] = data.get("running", timer_state["running"])
-
     # Emit updated state to all clients
     socketio.emit("update_timer", {
-        "time_left": timer_state["time_left"],
+        "duration": timer_state["duration"],
         "running": timer_state["running"]
     })
     print("Timer update emitted via WebSocket")
@@ -208,19 +210,19 @@ def handle_control_timer(data):
     elif action == "pause":
         if timer_state["running"]:
             elapsed_time = time.monotonic() - timer_state["start_time"]
-            timer_state["time_left"] -= int(elapsed_time)
+            timer_state["duration"] -= int(elapsed_time)
             timer_state["running"] = False
     elif action == "reset":
-        timer_state["time_left"] = 600
+        timer_state["duration"] = 0
         timer_state["running"] = False
         timer_state["start_time"] = 0.0
     elif action == "set":
-        timer_state["time_left"] = data.get("time", 600)
+        timer_state["duration"] = data.get("time", 0)
         timer_state["running"] = False
         timer_state["start_time"] = 0.0
 
     socketio.emit("update_timer", {
-        "time_left": timer_state["time_left"],
+        "duration": timer_state["duration"],
         "running": timer_state["running"]
     })
 

@@ -43,12 +43,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const selectedMode = modeSelect.value;
         const isClockMode = selectedMode === "clock";
         const isCountUpMode = selectedMode === "countup";
+        const isCountDownMode = selectedMode === "countdown";
 
         timeInput.disabled = isClockMode || isCountUpMode;
         setTimerButton.disabled = isClockMode || isCountUpMode;
         startButton.disabled = isClockMode;
         pauseButton.disabled = isClockMode;
-        resetButton.disabled = isClockMode;
+        resetButton.disabled = isClockMode || isCountDownMode;
     }
 
     // Event listener for the mode dropdown
@@ -75,14 +76,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // Fetch current URLs when the page loads
     fetchCurrentUrls();
 
-    startButton.addEventListener("click", () => {
-        fetch("/control_timer", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ action: "start" })
-        });
+    startButton.addEventListener("click", (event) => {
+        event.preventDefault(); // Prevent form submission
+        socket.emit("control_timer", { action: "start" });
     });
 
     // Function to set the timer
@@ -91,6 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const timeInput = document.getElementById("setTimerInput");
         const timeInSeconds = parseInt(timeInput.value, 10);
         socket.emit("control_timer", { action: "set", time: timeInSeconds });
+        console.log("Setting timer to", timeInSeconds);
     }
 
     // Event listener for the set timer button
@@ -112,6 +109,13 @@ document.addEventListener("DOMContentLoaded", () => {
     resetButton.addEventListener("click", (event) => {
         event.preventDefault(); // Prevent form submission
         socket.emit("control_timer", { action: "reset" });
+    });
+
+    document.getElementById("setTimerButton").addEventListener("click", () => {
+        const countdownTime = parseInt(document.getElementById("setTimerInput").value, 10);
+        if (!isNaN(countdownTime)) {
+            socket.emit("control_timer", { action: "set", time: countdownTime });
+        }
     });
 
     // Listen for refresh URL 1 event
