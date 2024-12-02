@@ -5,6 +5,7 @@ eventlet.monkey_patch()
 # Import flask modules
 from flask import Flask, render_template, request, redirect, url_for
 from flask_socketio import SocketIO, emit
+import time
 
 # Initialise Flask app and SocketIO
 app = Flask(__name__)
@@ -21,7 +22,8 @@ view_config = {
 # Default timer state
 timer_state = {
     "time_left": 600,  # Default 10 minutes (600 seconds)
-    "running": False   # Timer is paused by default
+    "running": False,   # Timer is paused by default
+    "mode": "clock"    # Default mode
 }
 
 # root URL rules
@@ -57,7 +59,7 @@ def timer():
     """
     Render the Timer Page.
     """
-    return render_template("timer.html", time_left=timer_state["time_left"])
+    return render_template("timer.html", time_left=timer_state["time_left"], mode=timer_state["mode"])
 
 # /update_timer page rules
 @app.route("/update_timer", methods=["POST"])
@@ -103,11 +105,13 @@ def control():
             view_config["proxy_count"] = 1  # Show only the first proxy
         else:
             view_config["proxy_count"] = 2  # Show both proxies with a split
+
     # Render the control page
     return render_template(
         "control.html",
         proxy_count=view_config["proxy_count"],
-        proxy_split=view_config["proxy_split"]
+        proxy_split=view_config["proxy_split"],
+        mode=timer_state["mode"] # Pass the current mode to the template
     )
 
 
@@ -118,9 +122,9 @@ def update_split():
     view_config["proxy_split"] = proxy_split
 
     # Adjust the number of proxies based on the slider value
-    if (proxy_split == 0):
+    if proxy_split == 0:
         view_config["proxy_count"] = 1  # Show only the second proxy
-    elif (proxy_split == 100):
+    elif proxy_split == 100:
         view_config["proxy_count"] = 1  # Show only the first proxy
     else:
         view_config["proxy_count"] = 2  # Show both proxies with a split
@@ -134,6 +138,11 @@ def update_split():
     })
 
     return {"status": "success", "url1": view_config["url1"], "url2": view_config["url2"]}
+
+
+@app.route("/get_current_split", methods=["GET"])
+def get_current_split():
+    return {"proxy_split": view_config["proxy_split"]}
 
 
 @app.route("/update_urls", methods=["POST"])
@@ -152,6 +161,7 @@ def update_urls():
 
     return {"status": "success"}
 
+
 @socketio.on("refresh_url")
 def handle_refresh_url(data):
     url = data.get("url")
@@ -159,6 +169,52 @@ def handle_refresh_url(data):
         socketio.emit("update_urls", {"url1": view_config["url1"]})
     elif url == "url2":
         socketio.emit("update_urls", {"url2": view_config["url2"]})
+
+
+@app.route("/get_current_urls", methods=["GET"])
+def get_current_urls():
+    print("URL1: ", view_config["url1"])
+    print("URL1: ", view_config["url1"])
+    return {
+        "url1": view_config["url1"],
+        "url2": view_config["url2"]
+    }
+
+
+@socketio.on("control_timer")
+def handle_control_timer(data):
+    action = data.get("action")
+    if action == "start":
+        if not timer_state["running"]:
+            timer_state["running"] = True
+            timer_state["start_time"] = time.monotonic()
+    elif action == "pause":
+        if timer_state["running"]:
+            elapsed_time = time.monotonic() - timer_state["start_time"]
+            timer_state["time_left"] -= int(elapsed_time)
+            timer_state["running"] = False
+    elif action == "reset":
+        timer_state["time_left"] = 600
+        timer_state["running"] = False
+        timer_state["start_time"] = 0.0
+    elif action == "set":
+        timer_state["time_left"] = data.get("time", 600)
+        timer_state["running"] = False
+        timer_state["start_time"] = 0.0
+
+    socketio.emit("update_timer", {
+        "time_left": timer_state["time_left"],
+        "running": timer_state["running"]
+    })
+
+
+@socketio.on("control_mode")
+def handle_control_mode(data):
+    selected_mode = data.get("mode")
+    timer_state["mode"] = selected_mode  # Store the selected mode
+    print(f"Mode changed to {selected_mode}")
+    socketio.emit("update_mode", {"mode": selected_mode})
+
 
 if __name__ == "__main__":
     socketio.run(app, debug=True, host="0.0.0.0", port=5000)

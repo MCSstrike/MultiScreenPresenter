@@ -5,17 +5,13 @@
     <title>Control Page</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
 </head>
-<body>
+<body onload="populateDropdowns()">
     <h1>Control Page</h1>
     <form method="POST">
         <!-- URL Controls -->
         <div class="url-controls">
             <label>URL 1:</label>
             <select id="url1-dropdown" onchange="updateUrlInput(1)">
-                <option value="matchMaker">Match Maker</option>
-                <option value="timer">Timer</option>
-                <option value="google">Google</option>
-                <option value="custom">Custom</option>
             </select>
             <input type="text" id="url1-input" value="http://localhost:5000/view">
             <button type="button" onclick="refreshUrl(1)">Refresh</button>
@@ -23,10 +19,6 @@
         <div class="url-controls">
             <label>URL 2:</label>
             <select id="url2-dropdown" onchange="updateUrlInput(2)">
-                <option value="matchMaker">Match Maker</option>
-                <option value="timer">Timer</option>
-                <option value="google">Google</option>
-                <option value="custom">Custom</option>
             </select>
             <input type="text" id="url2-input" value="http://localhost:5000/view">
             <button type="button" onclick="refreshUrl(2)">Refresh</button>
@@ -54,13 +46,21 @@
         <!-- Timer -->
         <div class="timer-container">
             <h2>Timer Controls</h2>
-            <div class="timer-controls">
+<!--            <div class="timer-controls">
                 <button onclick="controlTimer('start')">Start</button>
                 <button onclick="controlTimer('pause')">Pause</button>
                 <button onclick="controlTimer('reset')">Reset</button>
                 <input type="number" id="setTimer" placeholder="Set Time (seconds)">
                 <button onclick="setTimer()">Set Time</button>
-            </div>
+            </div>-->
+            <select id="modeSelect">
+                <option value="clock">Clock</option>
+                <option value="countup">Count Up</option>
+                <option value="countdown">Count Down</option>
+            </select>
+            <input type="number" id="setTimerInput" min="0">
+            <button id="startButton" {{ 'disabled' if mode == 'clock' else '' }}>Start</button>
+            <button id="setTimerButton">Set Timer</button>
         </div>
     </form>
 

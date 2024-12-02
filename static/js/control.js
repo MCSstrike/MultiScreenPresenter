@@ -1,6 +1,62 @@
 document.addEventListener("DOMContentLoaded", () => {
     const socket = io(); // Initialize WebSocket connection
 
+    const slider = document.getElementById('proxySplit');
+    const sliderValue = document.getElementById("sliderValue");
+
+    // Fetch the current slider value from the server when the page loads
+    fetch("/get_current_split")
+        .then(response => response.json())
+        .then(data => {
+            slider.value = data.proxy_split;
+            handleSliderInteraction(slider);
+        })
+        .catch(error => console.error("Error fetching current proxy split:", error
+    ));
+
+    // Fetch the current URLs from the server when the page loads
+    fetch("/get_current_urls")
+        .then(response => response.json())
+        .then(data => {
+            setDropdownValue("url1", data.url1);
+            setDropdownValue("url2", data.url2);
+        })
+        .catch(error => console.error("Error fetching current URLs:", error
+    ));
+
+    startButton.addEventListener("click", () => {
+        fetch("/control_timer", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ action: "start" })
+        });
+    });
+
+    // Function to set the timer
+    function setTimer(event) {
+        event.preventDefault(); // Prevent form submission
+        const timeInput = document.getElementById("setTimerInput");
+        const timeInSeconds = parseInt(timeInput.value, 10);
+        socket.emit("control_timer", { action: "set", time: timeInSeconds });
+    }
+
+    // Event listener for the set timer button
+    const setTimerButton = document.getElementById("setTimerButton");
+    setTimerButton.addEventListener("click", setTimer);
+
+    // Function to set the mode
+    function setMode(event) {
+        const modeSelect = document.getElementById("modeSelect");
+        const selectedMode = modeSelect.value;
+        socket.emit("control_mode", { mode: selectedMode });
+    }
+
+    // Event listener for the mode dropdown
+    const modeSelect = document.getElementById("modeSelect");
+    modeSelect.addEventListener("change", setMode);
+
     // Listen for refresh URL 1 event
     socket.on("refresh_url1", (data) => {
         const iframe1 = document.querySelector(".dual-proxy iframe:nth-child(1)");
@@ -17,7 +73,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    const slider = document.getElementById('proxySplit');
     handleSliderInteraction(slider);
 
     const url1Input = document.getElementById("url1-input");
@@ -33,6 +88,32 @@ document.addEventListener("DOMContentLoaded", () => {
     updateUrlInput(1); // Initialize URL 1
     updateUrlInput(2); // Initialize URL 2
 });
+
+const websites = [
+    { name: "Match Maker", value: "matchMaker", url: "http://localhost:5000/matchMaker" },
+    { name: "Timer", value: "timer", url: "http://localhost:5000/timer" },
+    { name: "BAP Tender", value: "baptender", url: "http://baptender.com" },
+    { name: "BAP Tender Graph", value: "baptendergraph", url: "http://baptender.com/graph" },
+    { name: "Google", value: "google", url: "http://google.com" },
+    { name: "Custom", value: "custom", url: "" }
+];
+
+function populateDropdowns() {
+    const dropdown1 = document.getElementById("url1-dropdown");
+    const dropdown2 = document.getElementById("url2-dropdown");
+
+    websites.forEach(site => {
+        const option1 = document.createElement("option");
+        option1.value = site.value;
+        option1.textContent = site.name;
+        dropdown1.appendChild(option1);
+
+        const option2 = document.createElement("option");
+        option2.value = site.value;
+        option2.textContent = site.name;
+        dropdown2.appendChild(option2);
+    });
+}
 
 function refreshUrl(urlNumber) {
     const socket = io(); // Initialize WebSocket connection
@@ -99,6 +180,10 @@ function updateUrlInput(urlNumber) {
         input.disabled = true; // Disable the input
     } else if (selectedValue === "timer") {
         input.value = "http://localhost:5000/timer"; // Clear the input for custom entry
+    } else if (selectedValue === "baptender") {
+        input.value = "http://baptender.com"; // Clear the input for custom entry
+    } else if (selectedValue === "baptendergraph") {
+        input.value = "http://baptender.com/graph"; // Clear the input for custom entry
         input.disabled = true; // Enable the input
     } else if (selectedValue === "google") {
         input.value = "http://google.com"; // Clear the input for custom entry
@@ -133,39 +218,18 @@ function updateProxyUrls() {
         .catch((error) => console.error("Error updating URLs:", error));
 }
 
-function controlTimer(action) {
-    const timeInput = document.getElementById("setTimer");
-    let timeLeft = parseInt(document.getElementById("setTimer").value, 10) || 600; // Default to 10 minutes
-    let running = false;
+function setDropdownValue(urlNumber, url) {
+    const dropdown = document.getElementById(`url${urlNumber}-dropdown`);
+    const input = document.getElementById(`url${urlNumber}-input`);
 
-    if (action === "start") {
-        running = true;
-    } else if (action === "pause") {
-        running = false;
-    } else if (action === "reset") {
-        timeLeft = 600; // Reset to default
-        running = false;
+    const site = websites.find(site => site.url === url);
+    if (site) {
+        dropdown.value = site.value;
+        input.value = site.url;
+        input.disabled = site.value !== "custom";
+    } else {
+        dropdown.value = "custom";
+        input.value = url;
+        input.disabled = false;
     }
-
-    console.log("Sending timer state to server:", { time_left: timeLeft, running }); // Debug log
-
-    // Send updated timer state to the server
-    fetch("/update_timer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ time_left: timeLeft, running: running }),
-    })
-        .then((response) => response.json())
-        .then((data) => console.log("Timer state updated:", data))
-        .catch((error) => console.error("Error updating timer:", error));
-}
-
-function setTimer() {
-    const timeLeft = parseInt(document.getElementById("setTimer").value, 10) || 600;
-
-    fetch("/update_timer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ time_left: timeLeft, running: false }),
-    }).catch((error) => console.error("Error setting timer:", error));
 }

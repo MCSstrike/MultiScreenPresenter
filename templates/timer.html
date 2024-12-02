@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <title>Timer Page</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='timer.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
 </head>
 <body>
-    <h1>Timer</h1>
-    <div id="timerDisplay">00:10:00</div>
+    <h1>Timer Page</h1>
+    <div class="timer-display">
+        <span id="mode">{{ mode }}</span>
+        <span id="timerDisplay">{{ time_left }}</span>
+    </div>
 
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='js/timer.js') }}"></script>
 </body>
-</html>
