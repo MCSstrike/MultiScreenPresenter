@@ -10,50 +10,6 @@
     <div id="timerDisplay">00:10:00</div>
 
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
-<script>
-    const socket = io();
-    let timerInterval;
-    let currentTime = 0;
-
-    // Format time as MM:SS
-    function formatTime(seconds) {
-        const minutes = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-    }
-
-    // Start the timer
-    function startTimer(timeLeft) {
-        clearInterval(timerInterval);
-        currentTime = timeLeft;
-
-        timerInterval = setInterval(() => {
-            if (currentTime > 0) {
-                currentTime--;
-                document.getElementById("timerDisplay").textContent = formatTime(currentTime);
-            } else {
-                clearInterval(timerInterval); // Stop when time reaches 0
-            }
-        }, 1000);
-    }
-
-    // Stop the timer
-    function stopTimer() {
-        clearInterval(timerInterval);
-    }
-
-    // Listen for timer updates from the server
-    socket.on("update_timer", (data) => {
-        const timerDisplay = document.getElementById("timerDisplay");
-        timerDisplay.textContent = formatTime(data.time_left);
-        currentTime = data.time_left;
-
-        if (data.running) {
-            startTimer(data.time_left);
-        } else {
-            stopTimer();
-        }
-    });
-</script>
+    <script src="{{ url_for('static', filename='js/timer.js') }}"></script>
 </body>
 </html>
