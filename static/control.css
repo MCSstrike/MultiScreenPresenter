@@ -97,6 +97,7 @@ input[type="range"].gray::-moz-range-thumb {
 .url-controls input[type="text"] {
     width: 400px;
     padding: 2px;
+    margin-right: 10px;
     color: #495057; /* Default text color */
     background-color: #fff; /* Default white background */
     border: 1px solid #ced4da; /* Standard border */

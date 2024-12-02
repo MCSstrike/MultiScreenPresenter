@@ -139,12 +139,26 @@ def update_split():
 @app.route("/update_urls", methods=["POST"])
 def update_urls():
     data = request.get_json()
-    view_config["url1"] = data.get("url1", view_config["url1"])
-    view_config["url2"] = data.get("url2", view_config["url2"])
+    url1 = data.get("url1")
+    url2 = data.get("url2")
 
-    # Notify clients of updated URLs via WebSocket
-    socketio.emit("update_urls", {"url1": view_config["url1"], "url2": view_config["url2"]})
+    if url1 != view_config["url1"]:
+        view_config["url1"] = url1
+        socketio.emit("update_urls", {"url1": view_config["url1"]})
+
+    if url2 != view_config["url2"]:
+        view_config["url2"] = url2
+        socketio.emit("update_urls", {"url2": view_config["url2"]})
+
     return {"status": "success"}
+
+@socketio.on("refresh_url")
+def handle_refresh_url(data):
+    url = data.get("url")
+    if url == "url1":
+        socketio.emit("update_urls", {"url1": view_config["url1"]})
+    elif url == "url2":
+        socketio.emit("update_urls", {"url2": view_config["url2"]})
 
 if __name__ == "__main__":
     socketio.run(app, debug=True, host="0.0.0.0", port=5000)

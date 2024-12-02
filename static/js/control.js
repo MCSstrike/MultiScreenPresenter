@@ -1,4 +1,22 @@
 document.addEventListener("DOMContentLoaded", () => {
+    const socket = io(); // Initialize WebSocket connection
+
+    // Listen for refresh URL 1 event
+    socket.on("refresh_url1", (data) => {
+        const iframe1 = document.querySelector(".dual-proxy iframe:nth-child(1)");
+        if (iframe1) {
+            iframe1.src = data.url1;
+        }
+    });
+
+    // Listen for refresh URL 2 event
+    socket.on("refresh_url2", (data) => {
+        const iframe2 = document.querySelector(".dual-proxy iframe:nth-child(3)");
+        if (iframe2) {
+            iframe2.src = data.url2;
+        }
+    });
+
     const slider = document.getElementById('proxySplit');
     handleSliderInteraction(slider);
 
@@ -15,6 +33,16 @@ document.addEventListener("DOMContentLoaded", () => {
     updateUrlInput(1); // Initialize URL 1
     updateUrlInput(2); // Initialize URL 2
 });
+
+function refreshUrl(urlNumber) {
+    const socket = io(); // Initialize WebSocket connection
+
+    if (urlNumber === 1) {
+        socket.emit("refresh_url", { url: "url1" });
+    } else if (urlNumber === 2) {
+        socket.emit("refresh_url", { url: "url2" });
+    }
+}
 
 function handleSliderInteraction(slider) {
     const value = parseInt(slider.value, 10);

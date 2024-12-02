@@ -9,10 +9,18 @@ document.addEventListener("DOMContentLoaded", () => {
         // Dynamically update the iframes
         const iframes = document.querySelectorAll("iframe");
         if (iframes.length === 1) {
-            iframes[0].src = (data.proxy_split === 0) ? url2 : url1;
+            if (url1) {
+                iframes[0].src = url1;
+            } else if (url2) {
+                iframes[0].src = url2;
+            }
         } else if (iframes.length === 2) {
-            iframes[0].src = url1;
-            iframes[1].src = url2;
+            if (url1) {
+                iframes[0].src = url1;
+            }
+            if (url2) {
+                iframes[1].src = url2;
+            }
         }
     });
 
