@@ -96,15 +96,13 @@ def update_timer():
     return {"status": "success"}
 
 
-@socketio.on("connect")
-def handle_connect():
-    print("Client connected")
+#@socketio.on("connect")
+#def handle_connect():
+    # Handle connect event
 
-
-@socketio.on("disconnect")
-def handle_disconnect():
-    print("Client disconnected")
-
+#@socketio.on("disconnect")
+#def handle_disconnect():
+    # Handle disconnect event
 
 @app.route("/control", methods=["GET", "POST"])
 def control():

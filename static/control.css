@@ -52,7 +52,7 @@ input[type="range"].gray::-moz-range-thumb {
 
 .slider-value {
     position: absolute;
-    top: -25px;
+    top: -22px;
     left: 0;
     transform: translateX(-50%);
     font-size: 12px;
@@ -67,9 +67,15 @@ input[type="range"].gray::-moz-range-thumb {
 
 /* URL controls */
 .url-controls {
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
+}
+
+/* URL title styling */
+.view-container h2 {
+    margin-bottom: 10px;
+    font-size: 1.5em; /* Ensure consistent heading size */
 }
 
 .url-controls label {
@@ -85,7 +91,7 @@ input[type="range"].gray::-moz-range-thumb {
 .slider-container {
     display: flex;
     align-items: center;
-    margin-top: 30px;
+    margin-top: 25px;
 }
 
 .slider-container label {
@@ -122,24 +128,22 @@ input[type="text"]:disabled {
     /*box-sizing: border-box; /* Include padding and borders in the width */
 }
 
-
-
 /* Timer container styling */
 .timer-container {
-    margin-top: 30px;
+    margin-top: 20px;
     display: flex;
     flex-direction: column; /* Stack elements vertically */
-    gap: 10px; /* Space between the title and controls */
 }
 
 /* Timer title styling */
 .timer-container h2 {
-    margin: 0; /* Remove extra margins */
+    margin-bottom: 10px;
     font-size: 1.5em; /* Ensure consistent heading size */
 }
 
 /* Timer controls styling */
 .timer-controls {
+    margin-bottom: 10px;
     display: flex;
     align-items: center; /* Align items vertically */
 }
