@@ -26,3 +26,18 @@ iframe {
 .dual-proxy iframe:last-child {
     width: calc(100% - var(--proxy-split)); /* Remaining width for the second iframe */
 }
+
+.dual-proxy {
+    display: flex;
+    height: 100vh;
+}
+
+.dual-proxy iframe {
+    border: none;
+    height: 100%;
+}
+
+.separator {
+    width: 2px;
+    background-color: gray;
+}

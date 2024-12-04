@@ -2,16 +2,25 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timer</title>
+    <title>Timer Page</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
 </head>
 <body>
     <h1>Timer Page</h1>
-    {% if running %}
-        <h2>Time Remaining: {{ duration - elapsed | round(2) }} seconds</h2>
-    {% else %}
-        <h2>Timer Paused</h2>
-        <p>Elapsed Time: {{ elapsed | round(2) }} seconds</p>
-    {% endif %}
+    <div class="timer-display">
+        <span id="mode">{{ mode }}</span>
+        <span id="timerDisplay">{{ time_left }}</span>
+    </div>
+    <script>
+        const initialTimerState = {
+            duration: {{ duration }},
+            running: {{ running | tojson }},
+            mode: "{{ mode }}",
+            start_time: {{ start_time | default(0.0) }}
+        };
+        console.log("Initial Timer State:", initialTimerState);
+    </script>
+
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/timer.js') }}"></script>
 </body>
-</html>

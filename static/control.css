@@ -1,0 +1,123 @@
+/* Default slider style */
+input[type="range"] {
+    -webkit-appearance: none;
+    width: 150px; /* Reduced width */
+    height: 5px; /* Small height for a simple look */
+    border-radius: 5px;
+    background: #007bff; /* Default slider color (blue) */
+    outline: none;
+    transition: background 0.3s ease;
+    position: relative;
+}
+
+/* Slider thumb style */
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    background: #fff;
+    border: 1px solid #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    background: #fff;
+    border: 1px solid #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* Gray slider background for invalid ranges */
+input[type="range"].gray {
+    background: gray;
+}
+
+input[type="range"].gray::-webkit-slider-thumb {
+    border-color: gray;
+}
+
+input[type="range"].gray::-moz-range-thumb {
+    border-color: gray;
+}
+
+/* Value display above the slider */
+.slider-wrapper {
+    position: relative;
+    width: 150px;
+}
+
+.slider-value {
+    position: absolute;
+    top: -25px;
+    left: 0;
+    transform: translateX(-50%);
+    font-size: 12px;
+    font-weight: bold;
+    color: #000;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 2px 4px;
+    white-space: nowrap;
+}
+
+/* URL controls */
+.url-controls {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+}
+
+.url-controls label {
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.url-controls select {
+    margin-right: 10px;
+}
+
+/* Slider container with label */
+.slider-container {
+    display: flex;
+    align-items: center;
+    margin-top: 30px;
+}
+
+.slider-container label {
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+/* Standard text box formatting */
+.url-controls input[type="text"] {
+    width: 400px;
+    padding: 2px;
+    margin-right: 10px;
+    color: #495057; /* Default text color */
+    background-color: #fff; /* Default white background */
+    border: 1px solid #ced4da; /* Standard border */
+    border-radius: 4px; /* Standard rounded corners */
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.075); /* Subtle inset shadow */
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Consistent appearance for disabled text boxes */
+input[type="text"]:disabled {
+    background-color: #e9ecef; /* Light gray background */
+    color: #6c757d; /* Gray text color */
+    border: 1px solid #ced4da; /* Same border as enabled */
+    border-radius: 4px; /* Same rounded corners as enabled */
+    box-shadow: none; /* Remove focus shadow */
+}
+
+/* Ensure text boxes are 400px long */
+.url-controls input[type="text"] {
+    width: 400px;
+    max-width: 100%; /* Prevent overflow in small screens */
+    /*box-sizing: border-box; /* Include padding and borders in the width */
+}
