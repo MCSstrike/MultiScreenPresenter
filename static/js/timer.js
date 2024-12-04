@@ -127,15 +127,19 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("Duration: ", duration);
         console.log("Start Time: ", start_time);
 
+
         if (start_time != 0) {
             duration = duration - Math.round((Date.now() / 1000 - start_time) - 0.5);
+        }
+
+        if (duration < 0) {
+            duration = 0;
         }
 
         if (running === false) {
             timerDisplay.textContent = formatTime(duration);
         } else {
             // Update the display immediately
-            const timerDisplay = document.getElementById("timerDisplay");
             timerDisplay.textContent = formatTime(duration);
 
             timerInterval = setInterval(() => {
@@ -144,24 +148,56 @@ document.addEventListener("DOMContentLoaded", () => {
                     timerDisplay.textContent = formatTime(duration);
                 } else {
                     clearInterval(timerInterval);
+
+                    // Flash the screen
+                    flashScreen();
+
+                    // Play a sound
+                    playSound();
+
+                    console.log("Countdown complete!");
                 }
             }, 1000); // Update every second
         }
     }
 
-    /*// Function to start the countdown timer
-    function startCountdown(remainingTime) {
-        updateDisplay(remainingTime); // Set initial display
-        const interval = setInterval(() => {
-            if (!running || remainingTime <= 0) {
-                clearInterval(interval);
-                if (remainingTime <= 0) timerDisplay.textContent = "00:00:00";
-                return;
+    // Function to fade the screen in and out 5 times
+    function flashScreen() {
+        const body = document.body;
+        let flashCount = 0;
+        const totalFlashes = 4;
+
+        // Add a transition effect to the body's background color
+        body.style.transition = "background-color 0.5s ease-in-out";
+
+        // Function to toggle the fade effect
+        const toggleFade = () => {
+            // Alternate between red and the default background color
+            body.style.backgroundColor = body.style.backgroundColor === "red" ? "" : "red";
+            flashCount++;
+
+            if (flashCount < totalFlashes * 2) {
+                // Schedule the next fade after the transition duration
+                setTimeout(toggleFade, 800); // Match the transition duration
+            } else {
+                // Ensure the background returns to default
+                body.style.backgroundColor = "";
+                // Remove the transition effect after the animation
+                setTimeout(() => {
+                    body.style.transition = "";
+                }, 500); // Allow the final transition to complete
             }
-            remainingTime -= 1;
-            updateDisplay(remainingTime);
-        }, 1000);
-    }*/
+        };
+
+        // Start the fade effect
+        toggleFade();
+    }
+
+    // Function to play a sound
+    function playSound() {
+        const audio = new Audio("path_to_your_sound_file.mp3"); // Replace with your sound file path
+        audio.play().catch(error => console.error("Sound play error:", error));
+    }
 
     // Function to format time in HH:MM:SS.MM format
     function formatTime(seconds) {
