@@ -33,9 +33,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (mode === "clock") {
             modeElement.textContent = "Clock";
         } else if (mode === "countup") {
-            modeElement.textContent = "Count Up";
+            modeElement.textContent = "Stopwatch";
         } else if (mode === "countdown") {
-           modeElement.textContent = "Count Down";
+           modeElement.textContent = "Timer";
         }
         updateDisplay();
     }

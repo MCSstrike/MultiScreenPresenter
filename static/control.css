@@ -121,3 +121,60 @@ input[type="text"]:disabled {
     max-width: 100%; /* Prevent overflow in small screens */
     /*box-sizing: border-box; /* Include padding and borders in the width */
 }
+
+
+
+/* Timer container styling */
+.timer-container {
+    margin-top: 30px;
+    display: flex;
+    flex-direction: column; /* Stack elements vertically */
+    gap: 10px; /* Space between the title and controls */
+}
+
+/* Timer title styling */
+.timer-container h2 {
+    margin: 0; /* Remove extra margins */
+    font-size: 1.5em; /* Ensure consistent heading size */
+}
+
+/* Timer controls styling */
+.timer-controls {
+    display: flex;
+    align-items: center; /* Align items vertically */
+}
+
+/* Input and select styling to match URL controls */
+.timer-controls select {
+    margin-right: 10px;
+    width: 90px; /* Consistent size with URL dropdowns */
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.075); /* Subtle inset shadow */
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Standard text box formatting */
+.timer-controls input[type="text"] {
+    width: 100px;
+    padding: 2px;
+    margin-right: 10px;
+    color: #495057; /* Default text color */
+    background-color: #fff; /* Default white background */
+    border: 1px solid #ced4da; /* Standard border */
+    border-radius: 4px; /* Standard rounded corners */
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.075); /* Subtle inset shadow */
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Consistent appearance for disabled text boxes */
+.timer-controls input[type="text"]:disabled {
+    background-color: #e9ecef; /* Light gray background */
+    color: #6c757d; /* Gray text color */
+    border: 1px solid #ced4da; /* Same border as enabled */
+    border-radius: 4px; /* Same rounded corners as enabled */
+    box-shadow: none; /* Remove focus shadow */
+}
+
+.timer-controls button {
+    margin-right: 10px;
+    width: 46px;
+}

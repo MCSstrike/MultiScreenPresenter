@@ -9,61 +9,59 @@
     <h1>Control Page</h1>
     <form method="POST">
         <!-- URL Controls -->
-        <div class="url-controls">
-            <label>URL 1:</label>
-            <select id="url1-dropdown" onchange="updateUrlInput(1)">
-            </select>
-            <input type="text" id="url1-input" value="http://localhost:5000/view">
-            <button type="button" onclick="refreshUrl(1)">Refresh</button>
-        </div>
-        <div class="url-controls">
-            <label>URL 2:</label>
-            <select id="url2-dropdown" onchange="updateUrlInput(2)">
-            </select>
-            <input type="text" id="url2-input" value="http://localhost:5000/view">
-            <button type="button" onclick="refreshUrl(2)">Refresh</button>
-        </div>
+        <div class="view-container">
+            <h2>View Controls</h2>
+            <div class="url-controls">
+                <label>URL 1:</label>
+                <select id="url1-dropdown" onchange="updateUrlInput(1)">
+                </select>
+                <input type="text" id="url1-input" value="http://localhost:5000/view">
+                <button type="button" onclick="refreshUrl(1)">Refresh</button>
+            </div>
+            <div class="url-controls">
+                <label>URL 2:</label>
+                <select id="url2-dropdown" onchange="updateUrlInput(2)">
+                </select>
+                <input type="text" id="url2-input" value="http://localhost:5000/view">
+                <button type="button" onclick="refreshUrl(2)">Refresh</button>
+            </div>
 
-        <!-- Slider -->
-        <div class="slider-container">
-            <label>Page Division:</label>
-            <div class="slider-wrapper">
-                <div id="sliderValue" class="slider-value">50%</div>
-                <input
-                    type="range"
-                    id="proxySplit"
-                    name="proxy_split"
-                    value="{{ proxy_split }}"
-                    min="0"
-                    max="100"
-                    step="5"
-                    oninput="handleSliderInteraction(this)"
-                    onchange="validateSlider(this)"
-                >
+            <!-- Slider -->
+            <div class="slider-container">
+                <label>Page Division:</label>
+                <div class="slider-wrapper">
+                    <div id="sliderValue" class="slider-value">50%</div>
+                    <input
+                        type="range"
+                        id="proxySplit"
+                        name="proxy_split"
+                        value="{{ proxy_split }}"
+                        min="0"
+                        max="100"
+                        step="5"
+                        oninput="handleSliderInteraction(this)"
+                        onchange="validateSlider(this)"
+                    >
+                </div>
             </div>
         </div>
+
 
         <!-- Timer -->
         <div class="timer-container">
             <h2>Timer Controls</h2>
-<!--            <div class="timer-controls">
-                <button onclick="controlTimer('start')">Start</button>
-                <button onclick="controlTimer('pause')">Pause</button>
-                <button onclick="controlTimer('reset')">Reset</button>
-                <input type="number" id="setTimer" placeholder="Set Time (seconds)">
-                <button onclick="setTimer()">Set Time</button>
-            </div>-->
-            <select id="modeSelect">
-                <option value="clock" {{ 'selected' if mode == 'clock' else '' }}>Clock</option>
-                <option value="countup" {{ 'selected' if mode == 'countup' else '' }}>Count Up</option>
-                <option value="countdown" {{ 'selected' if mode == 'countdown' else '' }}>Count Down</option>
-            </select>
-
-            <input type="text" id="timeInput" placeholder="HH:MM:SS" oninput="formatTimeInput(this)">
-            <button id="setTimerButton">Set</button>
-            <button id="startButton">Start</button>
-            <button id="pauseButton">Pause</button>
-            <button id="resetButton">Reset</button>
+            <div class="timer-controls">
+                <select id="modeSelect">
+                    <option value="clock" {{ 'selected' if mode == 'clock' else '' }}>Clock</option>
+                    <option value="countup" {{ 'selected' if mode == 'countup' else '' }}>Stopwatch</option>
+                    <option value="countdown" {{ 'selected' if mode == 'countdown' else '' }}>Timer</option>
+                </select>
+                <input type="text" id="timeInput" placeholder="HH:MM:SS" oninput="formatTimeInput(this)">
+                <button id="setTimerButton">Set</button>
+                <button id="startButton">Start</button>
+                <button id="pauseButton">Pause</button>
+                <button id="resetButton">Reset</button>
+            </div>
         </div>
     </form>
 
