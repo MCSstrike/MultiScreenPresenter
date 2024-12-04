@@ -19,21 +19,11 @@ document.addEventListener("DOMContentLoaded", () => {
         updateDisplayMode();
     });
 
-    // Log the initial timer state to the console
-    console.log("Timer Duration:  ", initialTimerState.duration);
-    console.log("Timer Running:   ", initialTimerState.running);
-    console.log("Timer Mode:      ", initialTimerState.mode);
-    console.log("Timer Start Time:", initialTimerState.start_time);
-
     // Listen for timer updates from the server
     socket.on("update_timer", (data) => {
         duration = data.duration;
         running = data.running;
         start_time = data.start_time;
-
-        console.log("1Timer Duration: ", duration);
-        console.log("1Timer Running: ", running);
-        console.log("1Timer Start Time: ", start_time);
 
         updateDisplay();
     });
@@ -123,11 +113,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Function to start counting down
     function startCountDown() {
-        console.log("Running: ", running);
-        console.log("Duration: ", duration);
-        console.log("Start Time: ", start_time);
-
-
         if (start_time != 0) {
             duration = duration - Math.round((Date.now() / 1000 - start_time) - 0.5);
         }
@@ -154,8 +139,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     // Play a sound
                     playSound();
-
-                    console.log("Countdown complete!");
                 }
             }, 1000); // Update every second
         }
