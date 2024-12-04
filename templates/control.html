@@ -58,7 +58,8 @@
                 <option value="countup" {{ 'selected' if mode == 'countup' else '' }}>Count Up</option>
                 <option value="countdown" {{ 'selected' if mode == 'countdown' else '' }}>Count Down</option>
             </select>
-            <input type="number" id="setTimerInput" min="0"  placeholder="time in seconds">
+
+            <input type="text" id="timeInput" placeholder="HH:MM:SS" oninput="formatTimeInput(this)">
             <button id="setTimerButton">Set</button>
             <button id="startButton">Start</button>
             <button id="pauseButton">Pause</button>

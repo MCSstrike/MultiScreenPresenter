@@ -5,11 +5,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const sliderValue = document.getElementById("sliderValue");
 
     const modeSelect = document.getElementById("modeSelect");
-    const timeInput = document.getElementById("setTimerInput");
     const setTimerButton = document.getElementById("setTimerButton");
     const startButton = document.getElementById("startButton");
     const pauseButton = document.getElementById("pauseButton");
     const resetButton = document.getElementById("resetButton");
+    timeInput = document.getElementById("timeInput");
+    timeInput.value = "00:00:00";
 
     // Fetch the current slider value from the server when the page loads
     fetch("/get_current_split")
@@ -85,10 +86,14 @@ document.addEventListener("DOMContentLoaded", () => {
     // Function to set the timer
     function setTimer(event) {
         event.preventDefault(); // Prevent form submission
-        const timeInput = document.getElementById("setTimerInput");
-        const timeInSeconds = parseInt(timeInput.value, 10);
+
+        //const timeInSeconds = convertToSeconds(timeInput.value);
+
+        // Parse the time in HH:MM:SS format into seconds
+        const [hours, minutes, seconds] = timeInputValue.split(":").map(Number);
+        const timeInSeconds = (hours * 3600) + (minutes * 60) + (seconds || 0);
+
         socket.emit("control_timer", { action: "set", time: timeInSeconds });
-        console.log("Setting timer to", timeInSeconds);
     }
 
     // Event listener for the set timer button
@@ -110,13 +115,6 @@ document.addEventListener("DOMContentLoaded", () => {
     resetButton.addEventListener("click", (event) => {
         event.preventDefault(); // Prevent form submission
         socket.emit("control_timer", { action: "reset" });
-    });
-
-    document.getElementById("setTimerButton").addEventListener("click", () => {
-        const countdownTime = parseInt(document.getElementById("setTimerInput").value, 10);
-        if (!isNaN(countdownTime)) {
-            socket.emit("control_timer", { action: "set", time: countdownTime });
-        }
     });
 
     // Listen for refresh URL 1 event
@@ -159,6 +157,34 @@ const websites = [
     { name: "Google", value: "google", url: "http://google.com" },
     { name: "Custom", value: "custom", url: "" }
 ];
+
+let timeInputValue = "00:00:00";
+
+function formatTimeInput(input) {
+    // Get only numeric characters from the input
+    let value = input.value.replace(/\D/g, "");
+
+    // Limit to 6 digits (HHMMSS)
+    value = value.slice(-6);
+
+    // Pad with leading zeros if necessary
+    value = value.padStart(6, "0");
+
+    // Split into hours, minutes, and seconds
+    const hours = value.slice(0, 2);
+    const minutes = value.slice(2, 4);
+    const seconds = value.slice(4, 6);
+
+    // Update the input with formatted HH:MM:SS
+    input.value = `${hours}:${minutes}:${seconds}`;
+    timeInputValue = input.value;
+}
+
+// Function to convert HH:MM:SS to seconds
+function convertToSeconds(timeString) {
+    const [hours, minutes, seconds] = timeString.split(":").map(Number);
+    return (hours * 3600) + (minutes * 60) + (seconds || 0);
+}
 
 function populateDropdowns() {
     const dropdown1 = document.getElementById("url1-dropdown");
