@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function setMode(event) {
         const selectedMode = modeSelect.value;
         socket.emit("control_mode", { mode: selectedMode });
+        socket.emit("control_timer", { action: "reset" });
         handleModeChange();
     }
 

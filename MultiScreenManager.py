@@ -23,9 +23,9 @@ view_config = {
 
 # Default timer state
 timer_state = {
-    "duration": 600,  # Default 10 minutes (600 seconds)
-    "running": False,   # Timer is paused by default
-    "mode": "clock"    # Default mode
+    "duration": 0,    # Default 10 minutes (600 seconds)
+    "running": False, # Timer is paused by default
+    "mode": "clock"   # Default mode
 }
 
 # root URL rules
@@ -89,7 +89,8 @@ def update_timer():
     # Emit updated state to all clients
     socketio.emit("update_timer", {
         "duration": timer_state["duration"],
-        "running": timer_state["running"]
+        "running": timer_state["running"],
+        "start_time": timer_state["start_time"]
     })
     print("Timer update emitted via WebSocket")
     return {"status": "success"}
@@ -206,12 +207,16 @@ def handle_control_timer(data):
     if action == "start":
         if not timer_state["running"]:
             timer_state["running"] = True
-            timer_state["start_time"] = time.monotonic()
+            timer_state["start_time"] = time.time()
     elif action == "pause":
         if timer_state["running"]:
-            elapsed_time = time.monotonic() - timer_state["start_time"]
-            timer_state["duration"] -= int(elapsed_time)
+            elapsed_time = time.time() - timer_state["start_time"]
+            if timer_state["mode"] == "countdown":
+                timer_state["duration"] = timer_state["duration"] - int(elapsed_time)
+            elif timer_state["mode"] == "countup":
+                timer_state["duration"] = timer_state["duration"] + int(elapsed_time)
             timer_state["running"] = False
+            timer_state["start_time"] = 0.0
     elif action == "reset":
         timer_state["duration"] = 0
         timer_state["running"] = False
@@ -223,7 +228,8 @@ def handle_control_timer(data):
 
     socketio.emit("update_timer", {
         "duration": timer_state["duration"],
-        "running": timer_state["running"]
+        "running": timer_state["running"],
+        "start_time": timer_state["start_time"]
     })
 
 

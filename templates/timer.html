@@ -11,6 +11,15 @@
         <span id="mode">{{ mode }}</span>
         <span id="timerDisplay">{{ time_left }}</span>
     </div>
+    <script>
+        const initialTimerState = {
+            duration: {{ duration }},
+            running: {{ running | tojson }},
+            mode: "{{ mode }}",
+            start_time: {{ start_time | default(0.0) }}
+        };
+        console.log("Initial Timer State:", initialTimerState);
+    </script>
 
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='js/timer.js') }}"></script>
