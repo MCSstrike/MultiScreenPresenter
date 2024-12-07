@@ -10,6 +10,23 @@ document.addEventListener("DOMContentLoaded", () => {
     let mode = initialTimerState.mode;
     let start_time = initialTimerState.start_time;
 
+    // Initialize Particles.js
+    particlesJS("particles-js", {
+        particles: {
+            number: { value: 100, density: { enable: true, value_area: 800 } },
+            color: { value: ["#00ff00", "#00ffff", "#ff0000"] },
+            shape: { type: "circle" },
+            opacity: { value: 0.5 },
+            size: { value: 4 },
+            line_linked: { enable: true, distance: 150, color: "#ffffff", opacity: 0.4, width: 1 },
+            move: { enable: true, speed: 3 },
+        },
+        interactivity: {
+            events: { onhover: { enable: true, mode: "repulse" } },
+            modes: { repulse: { distance: 100, duration: 0.4 } },
+        },
+    });
+
     // Initialize with the mode passed from the server
     let timerInterval;
 
@@ -17,6 +34,8 @@ document.addEventListener("DOMContentLoaded", () => {
     socket.on("update_mode", (data) => {
         mode = data.mode;
         updateDisplayMode();
+        document.body.classList.remove("timer-intense");
+        timerDisplay.classList.remove("timer-intense");
     });
 
     // Listen for timer updates from the server
@@ -44,12 +63,28 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateDisplay() {
         clearInterval(timerInterval);
 
+        document.body.classList.remove("timer-intense");
+        timerDisplay.classList.remove("timer-intense");
+
         if (mode === "clock") {
             startClock();
         } else if (mode === "countup") {
             startCountUp();
         } else if (mode === "countdown") {
             startCountDown();
+
+            // Increase intensity as the timer approaches zero
+            const interval = setInterval(() => {
+                if (duration <= 10) {
+                    document.body.classList.add("timer-intense");
+                    timerDisplay.classList.add("timer-intense");
+                }
+                if (duration <= 0) {
+                    clearInterval(interval);
+                    // stop the flahing effect
+                    document.body.classList.remove("timer-intense");
+                }
+            }, 1000);
         }
     }
 
