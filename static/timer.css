@@ -1,0 +1,124 @@
+/* General Body Style */
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #000;
+    font-family: 'Share Tech Mono', monospace;
+    color: #0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    text-align: center;
+    position: relative;
+}
+
+/* Particles Canvas */
+#particles-js {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Timer Container */
+.timer-display {
+    position: relative;
+    z-index: 2;
+    transform: translateZ(50px);
+    display: inline-block;
+    text-align: center;
+    perspective: 1000px;
+}
+
+/* Title Style */
+#mode {
+    font-size: 6rem;
+    color: #0ff;
+    text-shadow: 0 0 10px #0ff;
+    margin-bottom: 10px;
+    animation: glow 1.5s infinite alternate;
+}
+
+/* Timer Digits */
+#timerDisplay {
+    font-size: 10rem;
+    display: flex;
+    text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+    gap: 10px;
+    justify-content: center;
+}
+
+/*.digit {
+    font-size: 12rem;
+    font-weight: bold;
+    color: #0f0;
+    text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+    transform: rotateX(0);
+    transition: transform 0.5s ease-in-out;
+    transform-style: preserve-3d;
+}*/
+
+/* Flip Animation */
+/*.digit.flip {
+    transform: rotateX(90deg);
+    transition: transform 0.5s ease-in-out;
+}*/
+
+/* Intensity Effects */
+.timer-intense {
+    animation: intense-glow 0.2s infinite alternate;
+}
+
+@keyframes intense-glow {
+    from {
+        text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000;
+    }
+    to {
+        text-shadow: 0 0 40px #ffff00, 0 0 60px #ffff00;
+    }
+}
+
+/* Background Particles Intensity */
+body.timer-intense {
+    animation: strobe 0.1s infinite alternate;
+}
+
+@keyframes strobe {
+    from {
+        background: radial-gradient(circle, #1a1a1a, #000);
+    }
+    to {
+        background: radial-gradient(circle, #ff0000, #000);
+    }
+}
+
+/* Button and Control Styles */
+button {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    background: #0f0;
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    font-size: 20rem;
+    cursor: pointer;
+    border-radius: 5px;
+    box-shadow: 0 0 5px #0f0;
+    animation: button-glow 2s infinite alternate;
+}
+
+@keyframes button-glow {
+    from {
+        box-shadow: 0 0 5px #0f0;
+    }
+    to {
+        box-shadow: 0 0 20px #0f0;
+    }
+}

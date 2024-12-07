@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Timer Page</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='timer.css') }}">
 </head>
 <body>
-    <h1>Timer Page</h1>
     <div class="timer-display">
         <span id="mode">{{ mode }}</span>
         <span id="timerDisplay">{{ time_left }}</span>
@@ -19,6 +18,27 @@
             start_time: {{ start_time | default(0.0) }}
         };
     </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        particlesJS("particles-js", {
+            "particles": {
+                "number": { "value": 100, "density": { "enable": true, "value_area": 800 } },
+                "color": { "value": ["#ff0000", "#00ff00", "#0000ff", "#ffff00"] },
+                "shape": { "type": "circle" },
+                "opacity": { "value": 0.5 },
+                "size": { "value": 5 },
+                "line_linked": { "enable": true, "distance": 150, "color": "#ffffff", "opacity": 0.4, "width": 1 },
+                "move": { "enable": true, "speed": 3 }
+            },
+            "interactivity": {
+                "events": { "onhover": { "enable": true, "mode": "repulse" } },
+                "modes": { "repulse": { "distance": 100, "duration": 0.4 } }
+            }
+        });
+    </script>
+    <div id="particles-js"></div>
 
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='js/timer.js') }}"></script>

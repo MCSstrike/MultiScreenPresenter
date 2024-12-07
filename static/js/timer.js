@@ -10,6 +10,23 @@ document.addEventListener("DOMContentLoaded", () => {
     let mode = initialTimerState.mode;
     let start_time = initialTimerState.start_time;
 
+    // Initialize Particles.js
+    particlesJS("particles-js", {
+        particles: {
+            number: { value: 100, density: { enable: true, value_area: 800 } },
+            color: { value: ["#00ff00", "#00ffff", "#ff0000"] },
+            shape: { type: "circle" },
+            opacity: { value: 0.5 },
+            size: { value: 4 },
+            line_linked: { enable: true, distance: 150, color: "#ffffff", opacity: 0.4, width: 1 },
+            move: { enable: true, speed: 3 },
+        },
+        interactivity: {
+            events: { onhover: { enable: true, mode: "repulse" } },
+            modes: { repulse: { distance: 100, duration: 0.4 } },
+        },
+    });
+
     // Initialize with the mode passed from the server
     let timerInterval;
 
@@ -17,6 +34,8 @@ document.addEventListener("DOMContentLoaded", () => {
     socket.on("update_mode", (data) => {
         mode = data.mode;
         updateDisplayMode();
+        document.body.classList.remove("timer-intense");
+        timerDisplay.classList.remove("timer-intense");
     });
 
     // Listen for timer updates from the server
@@ -44,37 +63,30 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateDisplay() {
         clearInterval(timerInterval);
 
+        document.body.classList.remove("timer-intense");
+        timerDisplay.classList.remove("timer-intense");
+
         if (mode === "clock") {
             startClock();
         } else if (mode === "countup") {
             startCountUp();
         } else if (mode === "countdown") {
             startCountDown();
+
+            // Increase intensity as the timer approaches zero
+            const interval = setInterval(() => {
+                if (duration <= 10) {
+                    document.body.classList.add("timer-intense");
+                    timerDisplay.classList.add("timer-intense");
+                }
+                if (duration <= 0) {
+                    clearInterval(interval);
+                    // stop the flahing effect
+                    document.body.classList.remove("timer-intense");
+                }
+            }, 1000);
         }
     }
-
-    function tezt() {
-    /*// Function to update the display based on the current mode
-    function updateDisplay() {
-        clearInterval(timerInterval);
-
-        if (mode === "clock") {
-            modeElement.textContent = "Clock";
-            startClock();
-        } else if (mode === "countup") {
-            modeElement.textContent = "Count Up";
-            timerDisplay.textContent = formatTime(duration);
-            if (running) {
-                startCountUp(duration);
-            }
-        } else if (mode === "countdown") {
-            modeElement.textContent = "Count Down";
-            timerDisplay.textContent = formatTime(duration);
-            if (running) {
-                startCountDown(duration);
-            }
-        }
-    }*/}
 
     // Function to start the clock and update it every second
     function startClock() {
@@ -133,53 +145,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     timerDisplay.textContent = formatTime(duration);
                 } else {
                     clearInterval(timerInterval);
-
-                    // Flash the screen
-                    flashScreen();
-
-                    // Play a sound
-                    playSound();
                 }
             }, 1000); // Update every second
         }
-    }
-
-    // Function to fade the screen in and out 5 times
-    function flashScreen() {
-        const body = document.body;
-        let flashCount = 0;
-        const totalFlashes = 4;
-
-        // Add a transition effect to the body's background color
-        body.style.transition = "background-color 0.5s ease-in-out";
-
-        // Function to toggle the fade effect
-        const toggleFade = () => {
-            // Alternate between red and the default background color
-            body.style.backgroundColor = body.style.backgroundColor === "red" ? "" : "red";
-            flashCount++;
-
-            if (flashCount < totalFlashes * 2) {
-                // Schedule the next fade after the transition duration
-                setTimeout(toggleFade, 800); // Match the transition duration
-            } else {
-                // Ensure the background returns to default
-                body.style.backgroundColor = "";
-                // Remove the transition effect after the animation
-                setTimeout(() => {
-                    body.style.transition = "";
-                }, 500); // Allow the final transition to complete
-            }
-        };
-
-        // Start the fade effect
-        toggleFade();
-    }
-
-    // Function to play a sound
-    function playSound() {
-        const audio = new Audio("path_to_your_sound_file.mp3"); // Replace with your sound file path
-        audio.play().catch(error => console.error("Sound play error:", error));
     }
 
     // Function to format time in HH:MM:SS.MM format
