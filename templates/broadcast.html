@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Broadcast</title>
+</head>
+<body>
+    <h1>Broadcasting Your Screen</h1>
+
+    <div>
+        <label for="streamName">Stream Name:</label>
+        <input type="text" id="streamName" name="streamName" placeholder="My Stream"/>
+    </div>
+
+    <div>
+        <label for="resolution">Resolution:</label>
+        <select id="resolution" name="resolution">
+            <option value="854x480">480p (854x480)</option>
+            <option value="1280x720" selected>720p (1280x720)</option>
+            <option value="1920x1080">1080p (1920x1080)</option>
+            <option value="2560x1440">2K (2560x1440)</option>
+            <option value="3840x2160">4K (3840x2160)</option>
+        </select>
+    </div>
+
+    <div>
+        <label for="framerate">Refresh Rate (FPS):</label>
+        <select id="framerate" name="framerate">
+            <option value="15">15</option>
+            <option value="30" selected>30</option>
+            <option value="60">60</option>
+            <option value="120">120</option>
+            <option value="144">144</option>
+            <option value="240">240</option>
+        </select>
+    </div>
+
+    <div>
+        <label for="bitrate">Bit Rate:</label>
+        <select id="bitrate" name="bitrate">
+            <option value="verylow">Very Low</option>
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+        </select>
+    </div>
+
+    <button id="startBtn">Start Broadcast</button>
+
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+        // Clear stream name on page load to ensure it's always empty when page is refreshed
+        const streamNameInput = document.getElementById('streamName');
+        streamNameInput.value = '';
+
+        const socket = io();
+
+        let mediaStream;
+        let videoEl;
+        let frameIntervalId = null;
+
+        let streamName = '';
+        let [canvasWidth, canvasHeight] = [1280, 720]; // default 720p
+        let fps = 30;
+        let jpegQuality = 0.7; // default medium
+
+        const resolutionSelect = document.getElementById('resolution');
+        const framerateSelect = document.getElementById('framerate');
+        const bitrateSelect = document.getElementById('bitrate');
+        const startBtn = document.getElementById('startBtn');
+
+        streamNameInput.addEventListener('input', () => {
+            streamName = streamNameInput.value;
+        });
+
+        resolutionSelect.addEventListener('change', updateResolution);
+        framerateSelect.addEventListener('change', updateFramerate);
+        bitrateSelect.addEventListener('change', updateBitrate);
+
+        function updateResolution() {
+            const val = resolutionSelect.value;
+            const [w, h] = val.split('x').map(Number);
+            canvasWidth = w;
+            canvasHeight = h;
+        }
+
+        function updateFramerate() {
+            fps = parseInt(framerateSelect.value, 10);
+            restartFrameCaptureIfRunning();
+        }
+
+        function updateBitrate() {
+            const val = bitrateSelect.value;
+            switch (val) {
+                case 'verylow':
+                    jpegQuality = 0.1;
+                    break;
+                case 'low':
+                    jpegQuality = 0.3;
+                    break;
+                case 'medium':
+                    jpegQuality = 0.7;
+                    break;
+                case 'high':
+                    jpegQuality = 0.9;
+                    break;
+            }
+        }
+
+        startBtn.onclick = async () => {
+            if (!mediaStream) {
+                try {
+                    mediaStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: true,
+                        audio: false
+                    });
+
+                    // When the user stops screen sharing
+                    const track = mediaStream.getVideoTracks()[0];
+                    track.onended = () => {
+                        stopFrameCapture();
+                        // Clear the stream name field when broadcast stops
+                        streamNameInput.value = '';
+                        streamName = '';
+                        startBtn.disabled = false;
+                    };
+
+                    videoEl = document.createElement('video');
+                    videoEl.srcObject = mediaStream;
+                    await videoEl.play();
+
+                    startFrameCapture();
+                    startBtn.disabled = true;
+                } catch (err) {
+                    console.error('Error accessing display media:', err);
+                }
+            }
+        };
+
+        function startFrameCapture() {
+            const interval = Math.round(1000 / fps);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            frameIntervalId = setInterval(() => {
+                if (!videoEl || videoEl.readyState !== videoEl.HAVE_ENOUGH_DATA) {
+                    return;
+                }
+
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+                ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+                const dataURL = canvas.toDataURL('image/jpeg', jpegQuality);
+
+                socket.emit('frame', {
+                    streamName: streamName || 'UnnamedStream',
+                    dataURL: dataURL
+                });
+
+            }, interval);
+        }
+
+        function stopFrameCapture() {
+            if (frameIntervalId) {
+                clearInterval(frameIntervalId);
+                frameIntervalId = null;
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+        }
+
+        function restartFrameCaptureIfRunning() {
+            if (frameIntervalId) {
+                stopFrameCapture();
+                startFrameCapture();
+            }
+        }
+
+        updateResolution();
+        updateFramerate();
+        updateBitrate();
+    </script>
+</body>
+</html>

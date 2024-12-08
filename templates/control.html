@@ -1,71 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Control Page</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Control</title>
 </head>
-<body onload="populateDropdowns()">
-    <h1>Control Page</h1>
-    <form method="POST">
-        <!-- URL Controls -->
-        <div class="view-container">
-            <h2>View Controls</h2>
-            <div class="url-controls">
-                <label>URL 1:</label>
-                <select id="url1-dropdown" onchange="updateUrlInput(1)">
-                </select>
-                <input type="text" id="url1-input" value="http://localhost:5000/view">
-                <button type="button" onclick="refreshUrl(1)">Refresh</button>
-            </div>
-            <div class="url-controls">
-                <label>URL 2:</label>
-                <select id="url2-dropdown" onchange="updateUrlInput(2)">
-                </select>
-                <input type="text" id="url2-input" value="http://localhost:5000/view">
-                <button type="button" onclick="refreshUrl(2)">Refresh</button>
-            </div>
+<body>
+    <h1>Control Panel</h1>
+    <p>Select which stream viewer1 should display:</p>
+    <select id="streamSelectViewer1">
+        <option value="">no stream selected</option>
+    </select>
 
-            <!-- Slider -->
-            <div class="slider-container">
-                <label>Page Division:</label>
-                <div class="slider-wrapper">
-                    <div id="sliderValue" class="slider-value">50%</div>
-                    <input
-                        type="range"
-                        id="proxySplit"
-                        name="proxy_split"
-                        value="{{ proxy_split }}"
-                        min="0"
-                        max="100"
-                        step="5"
-                        oninput="handleSliderInteraction(this)"
-                        onchange="validateSlider(this)"
-                    >
-                </div>
-            </div>
-        </div>
+    <p>Select which stream viewer2 should display:</p>
+    <select id="streamSelectViewer2">
+        <option value="">no stream selected</option>
+    </select>
 
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+        const socket = io();
 
-        <!-- Timer -->
-        <div class="timer-container">
-            <h2>Timer Controls</h2>
-            <div class="timer-controls">
-                <select id="modeSelect">
-                    <option value="clock" {{ 'selected' if mode == 'clock' else '' }}>Clock</option>
-                    <option value="countup" {{ 'selected' if mode == 'countup' else '' }}>Stopwatch</option>
-                    <option value="countdown" {{ 'selected' if mode == 'countdown' else '' }}>Timer</option>
-                </select>
-                <input type="text" id="timeInput" placeholder="HH:MM:SS" oninput="formatTimeInput(this)">
-                <button id="setTimerButton">Set</button>
-                <button id="startButton">Start</button>
-                <button id="pauseButton">Pause</button>
-                <button id="resetButton">Reset</button>
-            </div>
-        </div>
-    </form>
+        const streamSelectViewer1 = document.getElementById('streamSelectViewer1');
+        const streamSelectViewer2 = document.getElementById('streamSelectViewer2');
 
-    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
-    <script src="{{ url_for('static', filename='js/control.js') }}"></script>
+        let viewer1Current = null;
+        let viewer2Current = null;
+
+        // We'll track when we have received current streams for both viewers
+        let gotViewer1Current = false;
+        let gotViewer2Current = false;
+
+        // Request current streams at page load
+        socket.emit('request_current_stream', { viewer_id: 'viewer1' });
+        socket.emit('request_current_stream', { viewer_id: 'viewer2' });
+
+        // Once we know both current streams, we request the stream list
+        function maybeRequestStreamList() {
+            if (gotViewer1Current && gotViewer2Current) {
+                // Now that we have both currents, request the latest list
+                socket.emit('request_stream_list');
+            }
+        }
+
+        // Listen for current streams
+        socket.on('current_stream_viewer1', (streamName) => {
+            viewer1Current = streamName;
+            localStorage.setItem('currentStream_viewer1', streamName || '');
+            gotViewer1Current = true;
+            maybeRequestStreamList();
+        });
+
+        socket.on('current_stream_viewer2', (streamName) => {
+            viewer2Current = streamName;
+            localStorage.setItem('currentStream_viewer2', streamName || '');
+            gotViewer2Current = true;
+            maybeRequestStreamList();
+        });
+
+        // Listen for updates when a new stream is selected for a viewer
+        socket.on('selected_stream_viewer1', (streamName) => {
+            viewer1Current = streamName;
+            localStorage.setItem('currentStream_viewer1', streamName || '');
+            selectStreamInDropdown(streamSelectViewer1, streamName);
+        });
+
+        socket.on('selected_stream_viewer2', (streamName) => {
+            viewer2Current = streamName;
+            localStorage.setItem('currentStream_viewer2', streamName || '');
+            selectStreamInDropdown(streamSelectViewer2, streamName);
+        });
+
+        // When we receive the stream list, update dropdowns and select current streams
+        socket.on('stream_list', (streamNames) => {
+            updateDropdown(streamSelectViewer1, streamNames);
+            updateDropdown(streamSelectViewer2, streamNames);
+
+            // Restore or fallback to no stream selected
+            if (viewer1Current && streamNames.includes(viewer1Current)) {
+                selectStreamInDropdown(streamSelectViewer1, viewer1Current);
+            } else {
+                selectStreamInDropdown(streamSelectViewer1, '');
+            }
+
+            if (viewer2Current && streamNames.includes(viewer2Current)) {
+                selectStreamInDropdown(streamSelectViewer2, viewer2Current);
+            } else {
+                selectStreamInDropdown(streamSelectViewer2, '');
+            }
+        });
+
+        // Update dropdown options
+        function updateDropdown(dropdown, streamNames) {
+            dropdown.innerHTML = '';
+            // Always have the "no stream selected" option
+            const noneOption = document.createElement('option');
+            noneOption.value = '';
+            noneOption.textContent = 'no stream selected';
+            dropdown.appendChild(noneOption);
+
+            // Add active streams
+            streamNames.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                dropdown.appendChild(opt);
+            });
+        }
+
+        // Select a given stream in the dropdown
+        function selectStreamInDropdown(dropdown, streamName) {
+            const option = Array.from(dropdown.options).find(o => o.value === streamName);
+            if (option) {
+                dropdown.value = streamName;
+            } else {
+                dropdown.value = '';
+            }
+        }
+
+        // Re-fetch the stream list on dropdown click to get updated streams
+        streamSelectViewer1.addEventListener('click', () => {
+            socket.emit('request_stream_list');
+        });
+
+        streamSelectViewer2.addEventListener('click', () => {
+            socket.emit('request_stream_list');
+        });
+
+        // When user selects a new stream from the dropdown
+        streamSelectViewer1.addEventListener('change', () => {
+            const selected = streamSelectViewer1.value;
+            socket.emit('select_stream_for_viewer', {viewer_id: 'viewer1', streamName: selected});
+        });
+
+        streamSelectViewer2.addEventListener('change', () => {
+            const selected = streamSelectViewer2.value;
+            socket.emit('select_stream_for_viewer', {viewer_id: 'viewer2', streamName: selected});
+        });
+    </script>
 </body>
 </html>

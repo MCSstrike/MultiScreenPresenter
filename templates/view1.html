@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Viewer 1</title>
+</head>
+<body>
+    <h1>Viewing Broadcast (Viewer 1)</h1>
+    <img id="display" alt="Live Stream" />
+
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        const displayImg = document.getElementById('display');
+        const viewer_id = 'viewer1';
+
+        let currentStream = localStorage.getItem('currentStream_' + viewer_id) || null;
+
+        // Request current_stream for this viewer
+        socket.emit('request_current_stream', { viewer_id });
+
+        socket.on('current_stream_viewer1', (streamName) => {
+            if (streamName) {
+                currentStream = streamName;
+                localStorage.setItem('currentStream_viewer1', streamName);
+            } else {
+                currentStream = null;
+                localStorage.removeItem('currentStream_viewer1');
+            }
+        });
+
+        socket.on('selected_stream_viewer1', (streamName) => {
+            currentStream = streamName;
+            if (streamName) {
+                localStorage.setItem('currentStream_viewer1', streamName);
+            } else {
+                localStorage.removeItem('currentStream_viewer1');
+            }
+            displayImg.src = '';
+        });
+
+        socket.on('frame_viewer1', (data) => {
+            if (!currentStream) return;
+            if (data.streamName === currentStream) {
+                displayImg.src = data.dataURL;
+            }
+        });
+    </script>
+</body>
+</html>
