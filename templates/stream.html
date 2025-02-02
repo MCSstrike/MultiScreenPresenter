@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stream</title>
+    <script src="https://cdn.jsdelivr.net/npm/flv.js@latest"></script>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: black;
+        }
+        #video-container {
+            width: 100%;
+            height: 90vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: black;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        #toggle-button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #444;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="video-container">
+        <video id="video_player" muted playsinline></video>
+    </div>
+    <button id="toggle-button">Set to Zoomed</button>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var videoElement = document.getElementById("video_player");
+            var toggleButton = document.getElementById("toggle-button");
+            var isLetterBoxed = true;
+
+            if (flvjs.isSupported()) {
+                var flvPlayer = flvjs.createPlayer({
+                    type: "flv",
+                    url: "http://192.168.1.213:8080/live/livestream.flv",
+                    isLive: true,
+                    enableStashBuffer: false,
+                    stashInitialSize: 128,
+                    lazyLoad: false,
+                    seekType: "sequential",
+                    autoCleanupSourceBuffer: true,
+                    fixAudioTimestampGap: false
+                });
+
+                flvPlayer.attachMediaElement(videoElement);
+                flvPlayer.load();
+
+                videoElement.muted = true;
+                flvPlayer.play().catch(err => {
+                    console.error("Autoplay blocked, user interaction required:", err);
+                });
+
+                flvPlayer.on(flvjs.Events.BUFFER_FULL, function() {
+                    flvPlayer.currentTime = flvPlayer.buffered.end(0);
+                });
+
+                flvPlayer.on(flvjs.Events.ERROR, function(errorType, details) {
+                    console.error("FLV.js Error:", errorType, details);
+                });
+            }
+
+            toggleButton.addEventListener("click", function() {
+                isLetterBoxed = !isLetterBoxed;
+                videoElement.style.objectFit = isLetterBoxed ? "contain" : "cover";
+                toggleButton.textContent = isLetterBoxed ? "Set to Zoomed" : "Set to Letterbox";
+            });
+        });
+    </script>
+</body>
+</html>

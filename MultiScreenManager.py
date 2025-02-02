@@ -28,6 +28,20 @@ timer_state = {
     "mode": "clock"   # Default mode
 }
 
+@app.route("/stream")
+def stream():
+    """
+    Render the RTMP Stream Page.
+    """
+    return render_template("stream.html")
+
+@app.route("/pages")
+def pages():
+    """
+    Render the RTMP Stream view pages.
+    """
+    return render_template("pages.html")
+
 # root URL rules
 @app.route("/")
 def home():

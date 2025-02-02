@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Streams</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #111;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        #stream-list {
+            list-style: none;
+            padding: 0;
+        }
+        .stream-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #222;
+            border-radius: 5px;
+        }
+        .stream-link {
+            color: #00ccff;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .stream-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>Available Streams</h1>
+    <ul id="stream-list"></ul>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            fetch("http://192.168.1.213:1985/api/v1/streams")
+                .then(response => response.json())
+                .then(data => {
+                    var streamList = document.getElementById("stream-list");
+                    data.streams.forEach(stream => {
+                        var listItem = document.createElement("li");
+                        listItem.className = "stream-item";
+                        var link = document.createElement("a");
+                        link.href = "player.html?stream=" + encodeURIComponent(stream.name);
+                        link.className = "stream-link";
+                        link.textContent = stream.name;
+                        listItem.appendChild(link);
+                        streamList.appendChild(listItem);
+                    });
+                })
+                .catch(error => {
+                    console.error("Error fetching stream list:", error);
+                });
+        });
+    </script>
+</body>
+</html>
