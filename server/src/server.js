@@ -1,5 +1,6 @@
 const path = require("path");
 const crypto = require("crypto");
+const fs = require("fs");
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
@@ -13,6 +14,8 @@ const app = express();
 app.use(cors({ origin: ORIGIN === "*" ? true : ORIGIN }));
 app.use(express.static(path.join(__dirname, "..", "public")));
 
+const CADDY_ROOT_CERT_PATH = "/caddy-data/caddy/pki/authorities/local/root.crt";
+
 app.get("/health", (_, res) => {
   res.json({ ok: true, service: "multiscreen-server" });
 });
@@ -23,6 +26,21 @@ app.get("/control", (_, res) => {
 
 app.get("/display", (_, res) => {
   res.sendFile(path.join(__dirname, "..", "public", "display", "index.html"));
+});
+
+app.get("/cert", (_, res) => {
+  res.sendFile(path.join(__dirname, "..", "public", "cert", "index.html"));
+});
+
+app.get("/api/cert/root.crt", (_, res) => {
+  if (!fs.existsSync(CADDY_ROOT_CERT_PATH)) {
+    return res.status(404).json({
+      ok: false,
+      message: "Certificate not found yet. Start the HTTPS proxy once, then try again."
+    });
+  }
+
+  return res.download(CADDY_ROOT_CERT_PATH, "multiscreen-caddy-root.crt");
 });
 
 const server = http.createServer(app);

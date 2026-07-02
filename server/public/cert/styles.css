@@ -1,0 +1,80 @@
+:root {
+  --bg: #0d1118;
+  --panel: #17202b;
+  --panel2: #1f2a37;
+  --text: #eef4fa;
+  --muted: #9fb2c4;
+  --accent: #1a9a85;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: radial-gradient(circle at 90% 10%, #223246 0%, var(--bg) 50%);
+  color: var(--text);
+}
+
+.shell {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.card {
+  background: linear-gradient(140deg, var(--panel), var(--panel2));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+h1,
+h2,
+p,
+li {
+  margin-top: 0;
+}
+
+p,
+li {
+  color: var(--muted);
+}
+
+.btn {
+  display: inline-block;
+  text-decoration: none;
+  color: var(--text);
+  background: #144f67;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+}
+
+.btn:hover {
+  filter: brightness(1.1);
+}
+
+details {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.7rem;
+  margin-bottom: 0.6rem;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.4rem;
+}
+
+ul,
+ol {
+  margin-top: 0.4rem;
+}

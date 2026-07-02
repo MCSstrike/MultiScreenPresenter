@@ -49,6 +49,10 @@ Set `HTTPS_HOST` in `.env` before starting.
 
 - `https://<https-host>/control`
 
+If a client device needs the local certificate first, use HTTP helper page:
+
+- `http://<server-ip>:3000/cert`
+
 4. On each display machine, open:
 
 - `https://<https-host>/display?displayId=display-1`
@@ -107,6 +111,8 @@ If you use `tls internal` (default in this project), client devices must trust C
 ```bash
 docker cp multiscreen-proxy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
 ```
+
+Alternative: open `http://<server-ip>:3000/cert` and download directly.
 
 2. Install `caddy-root.crt` into the trusted Root CA store on each controller/display device.
 

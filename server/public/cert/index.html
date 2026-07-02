@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Certificate Setup</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <h1>Trust Certificate For Screen Sharing</h1>
+        <p>
+          Use this HTTP page to download the local certificate, install it, then use the HTTPS site.
+        </p>
+      </header>
+
+      <section class="card">
+        <h2>Step 1: Download Certificate</h2>
+        <p>
+          If download fails, start or restart Docker so the proxy can generate the certificate first.
+        </p>
+        <a class="btn" href="/api/cert/root.crt" download>Download multiscreen-caddy-root.crt</a>
+      </section>
+
+      <section class="card">
+        <h2>Step 2: Install On Your OS</h2>
+
+        <details open>
+          <summary>Windows</summary>
+          <ol>
+            <li>Open downloaded multiscreen-caddy-root.crt.</li>
+            <li>Click Install Certificate.</li>
+            <li>Select Local Machine (or Current User if preferred).</li>
+            <li>Choose Place all certificates in the following store.</li>
+            <li>Select Trusted Root Certification Authorities.</li>
+            <li>Finish and accept the warning prompt.</li>
+            <li>Close and reopen your browser.</li>
+          </ol>
+        </details>
+
+        <details>
+          <summary>macOS</summary>
+          <ol>
+            <li>Open Keychain Access.</li>
+            <li>Drag multiscreen-caddy-root.crt into System keychain (or Login keychain).</li>
+            <li>Double-click the imported certificate.</li>
+            <li>Expand Trust and set When using this certificate to Always Trust.</li>
+            <li>Enter your password if prompted.</li>
+            <li>Close and reopen your browser.</li>
+          </ol>
+        </details>
+
+        <details>
+          <summary>Linux</summary>
+          <p>
+            Linux steps vary by distro and browser. Typical Debian/Ubuntu flow:
+          </p>
+          <ol>
+            <li>Copy cert to /usr/local/share/ca-certificates/ as .crt.</li>
+            <li>Run sudo update-ca-certificates.</li>
+            <li>Restart browser.</li>
+          </ol>
+          <p>For Firefox, import the cert in browser certificate settings if needed.</p>
+        </details>
+      </section>
+
+      <section class="card">
+        <h2>Step 3: Open Secure Site</h2>
+        <p>After cert trust is installed, open:</p>
+        <ul>
+          <li>https://YOUR_HTTPS_HOST/control</li>
+          <li>https://YOUR_HTTPS_HOST/display?displayId=display-1</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
