@@ -39,14 +39,20 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
+Set `HTTPS_HOST` in `.env` before starting.
+
+- Local machine test: `HTTPS_HOST=localhost`
+- LAN by IP example: `HTTPS_HOST=192.168.1.50`
+- LAN by DNS name example: `HTTPS_HOST=multiscreen.lan`
+
 3. Open control UI:
 
-- `http://<server-ip>:3000/control`
+- `https://<https-host>/control`
 
 4. On each display machine, open:
 
-- `http://<server-ip>:3000/display?displayId=display-1`
-- `http://<server-ip>:3000/display?displayId=display-2`
+- `https://<https-host>/display?displayId=display-1`
+- `https://<https-host>/display?displayId=display-2`
 
 Use full-screen browser / kiosk mode on display machines.
 
@@ -92,12 +98,28 @@ Then open:
 - On LAN, you should run behind HTTPS reverse proxy (e.g., Caddy/Nginx with TLS) for best compatibility.
 - Audio capture support depends on OS/browser and selected source.
 
+### Trusting Local TLS (Caddy Internal CA)
+
+If you use `tls internal` (default in this project), client devices must trust Caddy's local root certificate.
+
+1. Export cert from server:
+
+```bash
+docker cp multiscreen-proxy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
+```
+
+2. Install `caddy-root.crt` into the trusted Root CA store on each controller/display device.
+
+3. Re-open the site using `https://<https-host>/...`.
+
+Without trusting this cert, browsers may still treat the connection as not secure enough for screen capture.
+
 ## Deployment Notes for Proxmox
 
 - Run Docker engine in your Proxmox VM/LXC.
-- Expose port `3000` to LAN.
+- Expose ports `80` and `443` to LAN.
 - Prefer static DHCP for the server IP.
-- Optionally place behind reverse proxy with HTTPS cert.
+- Set `HTTPS_HOST` in `.env` to that static IP or DNS name.
 
 ## Security (Recommended Next)
 

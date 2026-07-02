@@ -3,9 +3,27 @@ services:
     build:
       context: ./server
     container_name: multiscreen-server
-    ports:
-      - "3000:3000"
     environment:
       - PORT=${PORT:-3000}
       - ORIGIN=${ORIGIN:-*}
     restart: unless-stopped
+
+  multiscreen-proxy:
+    image: caddy:2.9.1
+    container_name: multiscreen-proxy
+    depends_on:
+      - multiscreen-server
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - HTTPS_HOST=${HTTPS_HOST:-localhost}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
