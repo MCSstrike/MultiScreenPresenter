@@ -58,6 +58,26 @@ function computeStopwatch(state) {
   return s.elapsedMs + (Date.now() - s.startedAt);
 }
 
+function getSlotPositionLabel(layout, slotId) {
+  const id = Number(slotId);
+  if (layout === "split-h") {
+    return id === 1 ? "Top" : id === 2 ? "Bottom" : "";
+  }
+  if (layout === "split-v") {
+    return id === 1 ? "Left" : id === 2 ? "Right" : "";
+  }
+  if (layout === "grid-2x2") {
+    if (id === 1) return "Top Left";
+    if (id === 2) return "Top Right";
+    if (id === 3) return "Bottom Left";
+    if (id === 4) return "Bottom Right";
+  }
+  if (layout === "single") {
+    return "Main";
+  }
+  return "";
+}
+
 function buildSlotControls(state) {
   slotControls.innerHTML = "";
   const streams = state.streams || [];
@@ -68,7 +88,8 @@ function buildSlotControls(state) {
     panel.className = "slot-panel";
 
     const title = document.createElement("h3");
-    title.textContent = `Slot ${i}`;
+    const posLabel = getSlotPositionLabel(state.layout, i);
+    title.textContent = posLabel ? `Slot ${i} (${posLabel})` : `Slot ${i}`;
 
     const kindSelect = document.createElement("select");
     ["stream", "clock", "timer", "stopwatch", "random"].forEach((k) => {
