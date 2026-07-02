@@ -63,6 +63,19 @@
           </ol>
           <p>For Firefox, import the cert in browser certificate settings if needed.</p>
         </details>
+
+        <details>
+          <summary>Firefox Additional Step (All OS)</summary>
+          <ol>
+            <li>Open about:config in Firefox.</li>
+            <li>Search for security.enterprise_roots.enabled.</li>
+            <li>Set it to true so Firefox can use your OS trusted root store.</li>
+            <li>Fully restart Firefox.</li>
+          </ol>
+          <p>
+            If this stays false, Firefox may ignore certs you installed into the OS store.
+          </p>
+        </details>
       </section>
 
       <section class="card">

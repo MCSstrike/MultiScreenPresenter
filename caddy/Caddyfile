@@ -2,7 +2,7 @@
   local_certs
 }
 
-{$HTTPS_HOST} {
+{$HTTPS_HOSTS:localhost,127.0.0.1} {
   tls internal
   reverse_proxy multiscreen-server:3000
 }

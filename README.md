@@ -39,11 +39,11 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Set `HTTPS_HOST` in `.env` before starting.
+Set `HTTPS_HOSTS` in `.env` before starting.
 
-- Local machine test: `HTTPS_HOST=localhost`
-- LAN by IP example: `HTTPS_HOST=192.168.1.50`
-- LAN by DNS name example: `HTTPS_HOST=multiscreen.lan`
+- Local machine test: `HTTPS_HOSTS=localhost,127.0.0.1`
+- LAN by IP example: `HTTPS_HOSTS=192.168.1.50,localhost,127.0.0.1`
+- LAN by DNS name example: `HTTPS_HOSTS=multiscreen.lan,192.168.1.50,localhost,127.0.0.1`
 
 3. Open control UI:
 
@@ -119,6 +119,19 @@ Alternative: open `http://<server-ip>:3000/cert` and download directly.
 3. Re-open the site using `https://<https-host>/...`.
 
 Without trusting this cert, browsers may still treat the connection as not secure enough for screen capture.
+
+### Secure Context Troubleshooting
+
+If Start Sharing still says secure context is required:
+
+1. Make sure you are using `https://...` URL, not `http://...`.
+2. Make sure the URL host appears in `HTTPS_HOSTS` (exact IP/hostname you open in browser).
+3. Recreate proxy certs after changing `HTTPS_HOSTS`:
+  - `docker compose down`
+  - `docker volume rm multiscreenpresenter_caddy_data multiscreenpresenter_caddy_config`
+  - `docker compose up -d --build`
+4. Re-download/install the new root cert from `http://<server-ip>:3000/cert`.
+5. Firefox only: set `security.enterprise_roots.enabled=true` in `about:config` and restart Firefox.
 
 ## Deployment Notes for Proxmox
 
