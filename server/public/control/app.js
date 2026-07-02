@@ -153,15 +153,59 @@ function renderState(state) {
   randomPreview.textContent = state.randomSelector.selected || "No selection";
 }
 
+function describeShareError(err) {
+  const name = err?.name || "Error";
+  const message = err?.message || "Unknown error";
+
+  if (name === "NotAllowedError") {
+    return "Screen share was blocked. Allow screen sharing in the browser prompt and try again.";
+  }
+  if (name === "NotFoundError") {
+    return "No shareable screen/window was found.";
+  }
+  if (name === "AbortError") {
+    return "Screen sharing was canceled before starting.";
+  }
+  if (name === "InvalidStateError") {
+    return "Screen share requires a direct user click. Try again by pressing Start Sharing manually.";
+  }
+  if (name === "TypeError") {
+    return "This browser rejected the capture options. Try a different browser or disable audio capture.";
+  }
+
+  return `${name}: ${message}`;
+}
+
+async function getDisplayStreamWithFallback() {
+  if (!window.isSecureContext) {
+    throw new Error(
+      "Screen sharing needs a secure context (HTTPS or localhost). Open this page via HTTPS or run locally with localhost."
+    );
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    throw new Error("This browser does not support screen/application sharing (getDisplayMedia).");
+  }
+
+  try {
+    return await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+  } catch (err) {
+    const isConstraintIssue = err?.name === "TypeError" || err?.name === "OverconstrainedError";
+    if (!isConstraintIssue) {
+      throw err;
+    }
+
+    // Some browser/OS combinations reject audio capture constraints.
+    return navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+  }
+}
+
 async function ensureSourceStarted() {
   if (mySourceId && localStreams.has(mySourceId)) {
     return;
   }
 
-  const stream = await navigator.mediaDevices.getDisplayMedia({
-    video: true,
-    audio: true
-  });
+  const stream = await getDisplayStreamWithFallback();
 
   socket.emit("source:start", {
     label: sourceLabelInput.value.trim() || `${myName} Stream`
@@ -305,7 +349,9 @@ startSourceBtn.addEventListener("click", async () => {
     await ensureSourceStarted();
   } catch (err) {
     console.error(err);
-    alert("Unable to capture screen/application. Check browser permissions.");
+    const detail = describeShareError(err);
+    sourceInfo.textContent = `Share failed: ${detail}`;
+    alert(`Unable to start sharing. ${detail}`);
   }
 });
 
