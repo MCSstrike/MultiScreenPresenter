@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multiscreen Display</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="hud">
+      <span id="displayIdText">Display: --</span>
+      <span id="connState">Connecting...</span>
+    </div>
+
+    <main id="stage" class="layout-single"></main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="./app.js" defer></script>
+  </body>
+</html>

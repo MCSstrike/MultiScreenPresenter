@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multiscreen Control</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <h1>Multiscreen Control</h1>
+        <div class="badge" id="connStatus">Connecting...</div>
+      </header>
+
+      <section class="card">
+        <h2>Layout</h2>
+        <div class="row wrap">
+          <button data-layout="single">Single</button>
+          <button data-layout="split-h">Split Horizontal</button>
+          <button data-layout="split-v">Split Vertical</button>
+          <button data-layout="grid-2x2">Grid 2x2</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>My Stream Source</h2>
+        <div class="row wrap">
+          <input id="sourceLabel" placeholder="Label (e.g. Alice Screen)" />
+          <button id="startSourceBtn">Start Sharing</button>
+          <button id="stopSourceBtn" class="danger" disabled>Stop Sharing</button>
+        </div>
+        <p id="sourceInfo" class="muted">No active source.</p>
+      </section>
+
+      <section class="card">
+        <h2>Slot Assignment</h2>
+        <div id="slotControls" class="stack"></div>
+      </section>
+
+      <section class="card grid2">
+        <div>
+          <h2>Clock</h2>
+          <p class="muted">Clock appears when a slot kind is set to Clock.</p>
+        </div>
+
+        <div>
+          <h2>Timer</h2>
+          <div class="row wrap">
+            <input id="timerSeconds" type="number" min="1" max="86400" value="300" />
+            <button id="timerSet">Set</button>
+            <button id="timerStart">Start</button>
+            <button id="timerStop">Stop</button>
+            <button id="timerReset">Reset</button>
+          </div>
+          <p id="timerPreview" class="muted">--:--</p>
+        </div>
+
+        <div>
+          <h2>Stopwatch</h2>
+          <div class="row wrap">
+            <button id="swStart">Start</button>
+            <button id="swStop">Stop</button>
+            <button id="swReset">Reset</button>
+          </div>
+          <p id="swPreview" class="muted">00:00.000</p>
+        </div>
+
+        <div>
+          <h2>Random Selector</h2>
+          <textarea id="randomOptions" rows="4" placeholder="One option per line"></textarea>
+          <div class="row wrap">
+            <button id="randomSave">Save Options</button>
+            <button id="randomRoll">Roll</button>
+          </div>
+          <p id="randomPreview" class="muted">No selection</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
