@@ -45,6 +45,38 @@ Set `HTTPS_HOSTS` in `.env` before starting.
 - LAN by IP example: `HTTPS_HOSTS=192.168.1.50,localhost,127.0.0.1`
 - LAN by DNS name example: `HTTPS_HOSTS=multiscreen.lan,192.168.1.50,localhost,127.0.0.1`
 
+## Using `layerworks.uk`
+
+For a LAN-only setup, the simplest route is to keep Caddy's internal TLS and point your own domain at the server inside your local DNS.
+
+- Set the host list in `.env`:
+
+```bash
+HTTPS_HOSTS=layerworks.uk,localhost,127.0.0.1
+```
+
+- Make `layerworks.uk` resolve to your server on the LAN.
+
+- Best option: add a local DNS override in your router, Pi-hole, or internal DNS server.
+- Fallback option: add a hosts entry on each client device.
+
+- Recreate the proxy certificates after changing the host name:
+
+```bash
+docker compose down
+docker volume rm multiscreenpresenter_caddy_data multiscreenpresenter_caddy_config
+docker compose up -d --build
+```
+
+- Open the app at:
+
+```text
+https://layerworks.uk/control
+https://layerworks.uk/display?displayId=display-1
+```
+
+- To change domains later, edit only `HTTPS_HOSTS` in `.env`, then repeat the certificate reset step.
+
 3. Open control UI:
 
 - `https://<https-host>/control`
