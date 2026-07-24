@@ -94,6 +94,11 @@ function slotCountForLayout(layout) {
   }
 }
 
+function getSlideshow(slideshowId, state = currentState) {
+  const slideshows = Array.isArray(state?.slideshows) ? state.slideshows : [];
+  return slideshows.find((slideshow) => slideshow.slideshowId === slideshowId) || null;
+}
+
 function ensurePeerForSource(sourceId) {
   if (pcBySource.has(sourceId)) {
     return pcBySource.get(sourceId);
@@ -220,6 +225,33 @@ function buildStream(sourceId) {
   return slot;
 }
 
+function buildSlideshow(slideshowId, state) {
+  const wrap = document.createElement("div");
+  wrap.className = "widget slideshow-widget";
+
+  const slideshow = getSlideshow(slideshowId, state);
+  if (!slideshow || !slideshow.slides.length) {
+    const msg = document.createElement("div");
+    msg.className = "small";
+    msg.textContent = "No slideshow selected.";
+    wrap.appendChild(msg);
+    return wrap;
+  }
+
+  const safeIndex = Math.max(0, Math.min(slideshow.slides.length - 1, Number(slideshow.currentIndex || 0)));
+  const slide = slideshow.slides[safeIndex];
+
+  const image = document.createElement("img");
+  image.src = slide.url;
+  image.alt = slide.name || `Slide ${safeIndex + 1}`;
+  image.loading = "eager";
+  image.decoding = "async";
+  image.className = "slide-image";
+  wrap.appendChild(image);
+
+  return wrap;
+}
+
 function buildSlot(slotCfg, state) {
   const slot = document.createElement("section");
   slot.className = "slot";
@@ -231,6 +263,9 @@ function buildSlot(slotCfg, state) {
   switch (slotCfg.kind) {
     case "stream":
       slot.appendChild(buildStream(slotCfg.sourceId));
+      break;
+    case "slideshow":
+      slot.appendChild(buildSlideshow(slotCfg.slideshowId, state));
       break;
     case "clock":
       slot.appendChild(buildClock(slotCfg));

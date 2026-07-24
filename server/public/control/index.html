@@ -63,6 +63,48 @@
         <p id="sourceInfo" class="muted">No active source.</p>
       </section>
 
+      <section class="card">
+        <h2>Slideshows (PowerPoint or Pictures)</h2>
+        <p class="muted">For PowerPoint, export slides as images (PNG/JPG) and upload those files or the slide folder.</p>
+
+        <div class="stack">
+          <div class="row wrap">
+            <input id="slideshowName" placeholder="Slideshow name" />
+            <input id="slideshowInterval" type="number" min="0.5" max="3600" step="0.5" value="5" />
+          </div>
+
+          <div class="row wrap">
+            <label class="file-pick">
+              <span>Select Pictures</span>
+              <input id="slideshowFiles" type="file" accept="image/*" multiple />
+            </label>
+
+            <label class="file-pick">
+              <span>Select Folder</span>
+              <input id="slideshowFolder" type="file" accept="image/*" webkitdirectory directory multiple />
+            </label>
+
+            <button id="slideshowUploadBtn">Create Slideshow</button>
+          </div>
+
+          <p id="slideshowStatus" class="muted">No slideshow upload in progress.</p>
+
+          <div class="row wrap">
+            <select id="slideshowSelect"></select>
+            <button id="slideshowPlay">Play</button>
+            <button id="slideshowPause">Pause</button>
+            <button id="slideshowPrev">Previous</button>
+            <button id="slideshowNext">Next</button>
+            <button id="slideshowDelete" class="danger">Delete</button>
+          </div>
+
+          <div class="row wrap">
+            <input id="slideshowIndex" type="range" min="0" max="0" step="1" value="0" />
+            <span id="slideshowIndexLabel" class="muted">Slide 0 / 0</span>
+          </div>
+        </div>
+      </section>
+
       <section class="card grid2">
         <div>
           <h2>Site-Wide Controls</h2>

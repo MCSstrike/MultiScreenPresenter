@@ -13,6 +13,10 @@ A local-first, low-latency multiscreen presentation system with:
   - Timer
   - Stopwatch
   - Random selector
+- Slideshows:
+  - Upload a folder of pictures and play it on any display slot
+  - Set auto-advance speed and control play/pause/next/previous
+  - PowerPoint supported via exported slide images (PNG/JPG)
 
 ## Architecture
 
@@ -127,6 +131,17 @@ Then open:
 - Timer: set, start, stop, reset
 - Stopwatch: start, stop, reset
 - Random selector: add options, roll randomly
+
+### Slideshows (Pictures / PowerPoint)
+
+- Create slideshow from multiple image files or a whole folder
+- Assign slideshow to a slot by setting slot kind to `slideshow`
+- Control slideshow playback globally from `/control`:
+  - Play / pause
+  - Previous / next slide
+  - Drag to a specific slide
+  - Set seconds per slide (auto-advance speed)
+- For PowerPoint decks: export your `.pptx` as slide images (`.png` or `.jpg`) and upload those images.
 
 ## Important Browser Notes
 

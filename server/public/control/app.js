@@ -12,6 +12,20 @@ const streamProfileHint = document.getElementById("streamProfileHint");
 const startSourceBtn = document.getElementById("startSourceBtn");
 const stopSourceBtn = document.getElementById("stopSourceBtn");
 const sourceInfo = document.getElementById("sourceInfo");
+const slideshowNameInput = document.getElementById("slideshowName");
+const slideshowIntervalInput = document.getElementById("slideshowInterval");
+const slideshowFilesInput = document.getElementById("slideshowFiles");
+const slideshowFolderInput = document.getElementById("slideshowFolder");
+const slideshowUploadBtn = document.getElementById("slideshowUploadBtn");
+const slideshowStatus = document.getElementById("slideshowStatus");
+const slideshowSelect = document.getElementById("slideshowSelect");
+const slideshowPlayBtn = document.getElementById("slideshowPlay");
+const slideshowPauseBtn = document.getElementById("slideshowPause");
+const slideshowPrevBtn = document.getElementById("slideshowPrev");
+const slideshowNextBtn = document.getElementById("slideshowNext");
+const slideshowDeleteBtn = document.getElementById("slideshowDelete");
+const slideshowIndexInput = document.getElementById("slideshowIndex");
+const slideshowIndexLabel = document.getElementById("slideshowIndexLabel");
 
 const timerSecondsInput = document.getElementById("timerSeconds");
 const timerPreview = document.getElementById("timerPreview");
@@ -50,6 +64,7 @@ let myName = `Controller-${Math.random().toString(16).slice(2, 6)}`;
 let mySourceId = null;
 let latestState = null;
 let mySourceKind = null;
+let selectedSlideshowId = null;
 
 function getActiveScreen(state = latestState) {
   if (!state?.screens?.length) {
@@ -140,6 +155,110 @@ function updateDisplayLink(screen) {
   displayPageLink.href = `/display?screenId=${encodeURIComponent(screenId)}`;
 }
 
+function getAllSlideshows(state = latestState) {
+  return Array.isArray(state?.slideshows) ? state.slideshows : [];
+}
+
+function getSelectedSlideshow(state = latestState) {
+  const slideshows = getAllSlideshows(state);
+  if (!slideshows.length) {
+    return null;
+  }
+
+  if (selectedSlideshowId) {
+    const selected = slideshows.find((slideshow) => slideshow.slideshowId === selectedSlideshowId);
+    if (selected) {
+      return selected;
+    }
+  }
+
+  selectedSlideshowId = slideshows[0].slideshowId;
+  return slideshows[0];
+}
+
+function setSlideshowStatus(message) {
+  slideshowStatus.textContent = message;
+}
+
+function renderSlideshowControls(state) {
+  const slideshows = getAllSlideshows(state);
+  const selected = getSelectedSlideshow(state);
+
+  slideshowSelect.innerHTML = "";
+  slideshows.forEach((slideshow) => {
+    const opt = document.createElement("option");
+    opt.value = slideshow.slideshowId;
+    opt.textContent = `${slideshow.name} (${slideshow.slides.length} slide${slideshow.slides.length === 1 ? "" : "s"})`;
+    if (selected && slideshow.slideshowId === selected.slideshowId) {
+      opt.selected = true;
+    }
+    slideshowSelect.appendChild(opt);
+  });
+
+  const hasSelection = Boolean(selected);
+  slideshowSelect.disabled = !slideshows.length;
+  slideshowPlayBtn.disabled = !hasSelection;
+  slideshowPauseBtn.disabled = !hasSelection;
+  slideshowPrevBtn.disabled = !hasSelection;
+  slideshowNextBtn.disabled = !hasSelection;
+  slideshowDeleteBtn.disabled = !hasSelection;
+
+  if (!selected) {
+    slideshowIndexInput.value = "0";
+    slideshowIndexInput.min = "0";
+    slideshowIndexInput.max = "0";
+    slideshowIndexInput.disabled = true;
+    slideshowIndexLabel.textContent = "Slide 0 / 0";
+    return;
+  }
+
+  slideshowIntervalInput.value = String(selected.intervalSec);
+  slideshowIndexInput.disabled = false;
+  slideshowIndexInput.min = "0";
+  slideshowIndexInput.max = String(Math.max(0, selected.slides.length - 1));
+  slideshowIndexInput.value = String(selected.currentIndex || 0);
+  slideshowIndexLabel.textContent = `Slide ${(selected.currentIndex || 0) + 1} / ${selected.slides.length}`;
+}
+
+async function createSlideshowFromSelectedFiles() {
+  const files = [...(slideshowFilesInput.files || []), ...(slideshowFolderInput.files || [])];
+  if (!files.length) {
+    setSlideshowStatus("Select pictures or a folder before creating a slideshow.");
+    return;
+  }
+
+  const intervalSec = Number(slideshowIntervalInput.value || 5);
+  const formData = new FormData();
+  formData.append("name", slideshowNameInput.value.trim() || "Slideshow");
+  formData.append("intervalSec", String(intervalSec));
+
+  files.forEach((file) => {
+    formData.append("slides", file, file.name);
+  });
+
+  setSlideshowStatus(`Uploading ${files.length} image(s)...`);
+
+  try {
+    const response = await fetch("/api/slideshows/images", {
+      method: "POST",
+      body: formData
+    });
+    const payload = await response.json();
+
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload.error || "Upload failed");
+    }
+
+    selectedSlideshowId = payload.slideshow.slideshowId;
+    slideshowFilesInput.value = "";
+    slideshowFolderInput.value = "";
+    setSlideshowStatus(`Created slideshow \"${payload.slideshow.name}\" with ${payload.slideshow.slides.length} slides.`);
+  } catch (err) {
+    console.error("Failed creating slideshow", err);
+    setSlideshowStatus(`Slideshow upload failed: ${err.message || "Unknown error"}`);
+  }
+}
+
 function buildScreenTabs(state) {
   screenTabs.innerHTML = "";
 
@@ -163,13 +282,15 @@ function buildSlotControls(state, screen) {
   }
 
   const streams = state.streams || [];
+  const slideshows = state.slideshows || [];
 
-  function emitSlotUpdate(slotId, kindValue, sourceValue, timezoneValue) {
+  function emitSlotUpdate(slotId, kindValue, sourceValue, slideshowValue, timezoneValue) {
     socket.emit("slot:set", {
       screenId: screen.screenId,
       slotId,
       kind: kindValue,
       sourceId: sourceValue || null,
+      slideshowId: slideshowValue || null,
       timezone: timezoneValue || "UTC"
     });
   }
@@ -184,7 +305,7 @@ function buildSlotControls(state, screen) {
     title.textContent = posLabel ? `Slot ${i} (${posLabel})` : `Slot ${i}`;
 
     const kindSelect = document.createElement("select");
-    ["stream", "clock", "timer", "stopwatch", "random"].forEach((k) => {
+    ["stream", "slideshow", "clock", "timer", "stopwatch", "random"].forEach((k) => {
       const opt = document.createElement("option");
       opt.value = k;
       opt.textContent = k;
@@ -205,26 +326,51 @@ function buildSlotControls(state, screen) {
       streamSelect.appendChild(opt);
     });
 
+    const slideshowSelect = document.createElement("select");
+    const noneSlideshow = document.createElement("option");
+    noneSlideshow.value = "";
+    noneSlideshow.textContent = "No slideshow";
+    slideshowSelect.appendChild(noneSlideshow);
+    slideshows.forEach((ss) => {
+      const opt = document.createElement("option");
+      opt.value = ss.slideshowId;
+      opt.textContent = `${ss.name} (${ss.slides.length})`;
+      if (slot.slideshowId === ss.slideshowId) opt.selected = true;
+      slideshowSelect.appendChild(opt);
+    });
+
     const tzInput = document.createElement("input");
     tzInput.placeholder = "Timezone (e.g. Europe/London)";
     tzInput.value = slot.timezone || "UTC";
 
+    function syncSlotFieldVisibility() {
+      streamSelect.style.display = kindSelect.value === "stream" ? "" : "none";
+      slideshowSelect.style.display = kindSelect.value === "slideshow" ? "" : "none";
+      tzInput.style.display = kindSelect.value === "clock" ? "" : "none";
+    }
+
     kindSelect.addEventListener("change", () => {
-      emitSlotUpdate(i, kindSelect.value, streamSelect.value, tzInput.value);
+      syncSlotFieldVisibility();
+      emitSlotUpdate(i, kindSelect.value, streamSelect.value, slideshowSelect.value, tzInput.value);
     });
 
     streamSelect.addEventListener("change", () => {
-      emitSlotUpdate(i, kindSelect.value, streamSelect.value, tzInput.value);
+      emitSlotUpdate(i, kindSelect.value, streamSelect.value, slideshowSelect.value, tzInput.value);
+    });
+
+    slideshowSelect.addEventListener("change", () => {
+      emitSlotUpdate(i, kindSelect.value, streamSelect.value, slideshowSelect.value, tzInput.value);
     });
 
     tzInput.addEventListener("input", () => {
-      emitSlotUpdate(i, kindSelect.value, streamSelect.value, tzInput.value);
+      emitSlotUpdate(i, kindSelect.value, streamSelect.value, slideshowSelect.value, tzInput.value);
     });
 
     const row1 = document.createElement("div");
     row1.className = "row wrap";
     row1.appendChild(kindSelect);
     row1.appendChild(streamSelect);
+    row1.appendChild(slideshowSelect);
 
     const row2 = document.createElement("div");
     row2.className = "row wrap";
@@ -233,6 +379,7 @@ function buildSlotControls(state, screen) {
     panel.appendChild(title);
     panel.appendChild(row1);
     panel.appendChild(row2);
+    syncSlotFieldVisibility();
     slotControls.appendChild(panel);
   }
 }
@@ -241,6 +388,7 @@ function renderState(state) {
   latestState = state;
   const activeScreen = getActiveScreen(state);
   buildScreenTabs(state);
+  renderSlideshowControls(state);
   buildSlotControls(state, activeScreen);
   updateDisplayLink(activeScreen);
   layoutButtons.forEach((btn) => {
@@ -611,6 +759,83 @@ document.getElementById("randomSave").onclick = () => {
 };
 
 document.getElementById("randomRoll").onclick = () => socket.emit("random:roll");
+
+slideshowUploadBtn.addEventListener("click", createSlideshowFromSelectedFiles);
+
+slideshowSelect.addEventListener("change", () => {
+  selectedSlideshowId = slideshowSelect.value || null;
+  if (latestState) {
+    renderSlideshowControls(latestState);
+  }
+});
+
+slideshowPlayBtn.addEventListener("click", () => {
+  const slideshow = getSelectedSlideshow();
+  if (!slideshow) return;
+  socket.emit("slideshow:play", { slideshowId: slideshow.slideshowId });
+});
+
+slideshowPauseBtn.addEventListener("click", () => {
+  const slideshow = getSelectedSlideshow();
+  if (!slideshow) return;
+  socket.emit("slideshow:pause", { slideshowId: slideshow.slideshowId });
+});
+
+slideshowPrevBtn.addEventListener("click", () => {
+  const slideshow = getSelectedSlideshow();
+  if (!slideshow) return;
+  socket.emit("slideshow:prev", { slideshowId: slideshow.slideshowId });
+});
+
+slideshowNextBtn.addEventListener("click", () => {
+  const slideshow = getSelectedSlideshow();
+  if (!slideshow) return;
+  socket.emit("slideshow:next", { slideshowId: slideshow.slideshowId });
+});
+
+slideshowIntervalInput.addEventListener("change", () => {
+  const slideshow = getSelectedSlideshow();
+  if (!slideshow) return;
+  socket.emit("slideshow:set-interval", {
+    slideshowId: slideshow.slideshowId,
+    intervalSec: Number(slideshowIntervalInput.value || 5)
+  });
+});
+
+slideshowIndexInput.addEventListener("input", () => {
+  const slideshow = getSelectedSlideshow();
+  if (!slideshow) return;
+  slideshowIndexLabel.textContent = `Slide ${Number(slideshowIndexInput.value) + 1} / ${slideshow.slides.length}`;
+});
+
+slideshowIndexInput.addEventListener("change", () => {
+  const slideshow = getSelectedSlideshow();
+  if (!slideshow) return;
+  socket.emit("slideshow:set-index", {
+    slideshowId: slideshow.slideshowId,
+    index: Number(slideshowIndexInput.value || 0)
+  });
+});
+
+slideshowDeleteBtn.addEventListener("click", async () => {
+  const slideshow = getSelectedSlideshow();
+  if (!slideshow) return;
+
+  try {
+    const response = await fetch(`/api/slideshows/${encodeURIComponent(slideshow.slideshowId)}`, {
+      method: "DELETE"
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload.error || "Delete failed");
+    }
+    selectedSlideshowId = null;
+    setSlideshowStatus(`Deleted slideshow \"${slideshow.name}\".`);
+  } catch (err) {
+    console.error("Failed deleting slideshow", err);
+    setSlideshowStatus(`Delete failed: ${err.message || "Unknown error"}`);
+  }
+});
 
 setInterval(() => {
   if (latestState) {

@@ -173,6 +173,31 @@ input {
   background: rgba(0, 0, 0, 0.2);
 }
 
+.file-pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #0f1a24;
+  color: var(--txt);
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.file-pick input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#slideshowIndex {
+  flex: 1;
+  min-width: 220px;
+}
+
 @media (max-width: 900px) {
   .grid2 {
     grid-template-columns: 1fr;

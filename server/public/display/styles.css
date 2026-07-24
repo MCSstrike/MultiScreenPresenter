@@ -107,9 +107,22 @@ body {
   background: #000;
 }
 
+.slot .slide-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
 .widget {
   text-align: center;
   padding: 1rem;
+}
+
+.widget.slideshow-widget {
+  width: 100%;
+  height: 100%;
+  padding: 0;
 }
 
 .widget .big {

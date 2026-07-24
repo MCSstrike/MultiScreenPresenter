@@ -1,17 +1,47 @@
 const path = require("path");
+const fs = require("fs");
 const crypto = require("crypto");
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
+const multer = require("multer");
 const { Server } = require("socket.io");
 require("dotenv").config();
 
 const PORT = Number(process.env.PORT || 3000);
 const ORIGIN = process.env.ORIGIN || "*";
 const DEFAULT_SCREEN_ID = "screen-1";
+const UPLOAD_SLIDES_DIR = path.join(__dirname, "..", "public", "uploads", "slides");
+
+fs.mkdirSync(UPLOAD_SLIDES_DIR, { recursive: true });
+
+function sanitizeForFilename(value) {
+  return String(value || "")
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 100);
+}
+
+const uploadStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, UPLOAD_SLIDES_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || "") || ".bin";
+    const base = sanitizeForFilename(path.basename(file.originalname || "slide", ext)) || "slide";
+    cb(null, `${Date.now()}-${crypto.randomUUID()}-${base}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage: uploadStorage,
+  limits: {
+    files: 500,
+    fileSize: 25 * 1024 * 1024
+  }
+});
 
 const app = express();
 app.use(cors({ origin: ORIGIN === "*" ? true : ORIGIN }));
+app.use(express.json({ limit: "5mb" }));
 app.use(express.static(path.join(__dirname, "..", "public")));
 
 app.get("/", (_, res) => {
@@ -42,6 +72,7 @@ function createDefaultSlots() {
     slotId,
     kind: "stream",
     sourceId: null,
+    slideshowId: null,
     timezone: "UTC"
   }));
 }
@@ -75,7 +106,8 @@ const state = {
     options: [],
     selected: null,
     updatedAt: Date.now()
-  }
+  },
+  slideshows: []
 };
 
 const controllers = new Map(); // socketId -> { name }
@@ -88,6 +120,85 @@ function nowMs() {
 
 function makeSourceId() {
   return `src_${crypto.randomUUID()}`;
+}
+
+function makeSlideshowId() {
+  return `ss_${crypto.randomUUID()}`;
+}
+
+function clampIntervalSec(intervalSec) {
+  return Math.max(0.5, Math.min(3600, Number(intervalSec || 5)));
+}
+
+function getSlideshow(slideshowId) {
+  return state.slideshows.find((slideshow) => slideshow.slideshowId === slideshowId) || null;
+}
+
+function removeFileQuiet(filePath) {
+  try {
+    fs.unlinkSync(filePath);
+  } catch (_err) {
+    // Best effort cleanup for rejected uploads.
+  }
+}
+
+function isImageFile(file) {
+  if (!file) {
+    return false;
+  }
+
+  if (String(file.mimetype || "").startsWith("image/")) {
+    return true;
+  }
+
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  return [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"].includes(ext);
+}
+
+function removeSlideshow(slideshowId) {
+  const index = state.slideshows.findIndex((slideshow) => slideshow.slideshowId === slideshowId);
+  if (index === -1) {
+    return false;
+  }
+
+  state.slideshows.splice(index, 1);
+
+  for (const screen of state.screens) {
+    for (const slot of screen.slots) {
+      if (slot.slideshowId === slideshowId) {
+        slot.slideshowId = null;
+        if (slot.kind === "slideshow") {
+          slot.kind = "stream";
+          slot.sourceId = null;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
+function advanceSlideshow(slideshow, steps = 1) {
+  if (!slideshow?.slides?.length) {
+    return;
+  }
+
+  const maxIndex = slideshow.slides.length - 1;
+  let nextIndex = slideshow.currentIndex + steps;
+
+  if (slideshow.loop) {
+    const len = slideshow.slides.length;
+    nextIndex = ((nextIndex % len) + len) % len;
+  } else {
+    nextIndex = Math.max(0, Math.min(maxIndex, nextIndex));
+    if (nextIndex === maxIndex && steps > 0) {
+      slideshow.playing = false;
+      slideshow.lastAdvancedAt = null;
+    }
+  }
+
+  slideshow.currentIndex = nextIndex;
+  slideshow.updatedAt = nowMs();
 }
 
 function slotCountForLayout(layout) {
@@ -153,6 +264,10 @@ function getPublicState() {
       ...state.randomSelector,
       options: [...state.randomSelector.options]
     },
+    slideshows: state.slideshows.map((slideshow) => ({
+      ...slideshow,
+      slides: slideshow.slides.map((slide) => ({ ...slide }))
+    })),
     streams: Array.from(streamSources.entries()).map(([sourceId, info]) => ({
       sourceId,
       label: info.label,
@@ -175,6 +290,7 @@ function clampScreenSlots(screen) {
     if (slot.slotId > maxSlots) {
       slot.kind = "stream";
       slot.sourceId = null;
+      slot.slideshowId = null;
       slot.timezone = "UTC";
     }
   }
@@ -190,6 +306,60 @@ function cleanupSource(sourceId) {
     }
   }
 }
+
+app.post("/api/slideshows/images", upload.array("slides", 500), (req, res) => {
+  const files = Array.isArray(req.files) ? req.files : [];
+  if (!files.length) {
+    return res.status(400).json({ ok: false, error: "No files uploaded" });
+  }
+
+  const rejected = files.filter((file) => !isImageFile(file));
+  if (rejected.length) {
+    files.forEach((file) => removeFileQuiet(file.path));
+    return res.status(400).json({
+      ok: false,
+      error: "Only image files are supported. Export PowerPoint slides as images, then upload them."
+    });
+  }
+
+  const sorted = [...files].sort((a, b) =>
+    String(a.originalname || "").localeCompare(String(b.originalname || ""), undefined, {
+      numeric: true,
+      sensitivity: "base"
+    })
+  );
+
+  const slideshow = {
+    slideshowId: makeSlideshowId(),
+    name: String(req.body?.name || "Slideshow").trim().slice(0, 120) || "Slideshow",
+    slides: sorted.map((file) => ({
+      url: `/uploads/slides/${path.basename(file.filename)}`,
+      name: String(file.originalname || path.basename(file.filename))
+    })),
+    currentIndex: 0,
+    intervalSec: clampIntervalSec(req.body?.intervalSec),
+    playing: false,
+    loop: true,
+    lastAdvancedAt: null,
+    createdAt: nowMs(),
+    updatedAt: nowMs()
+  };
+
+  state.slideshows.push(slideshow);
+  broadcastState();
+  return res.json({ ok: true, slideshow });
+});
+
+app.delete("/api/slideshows/:slideshowId", (req, res) => {
+  const slideshowId = String(req.params.slideshowId || "");
+  const removed = removeSlideshow(slideshowId);
+  if (!removed) {
+    return res.status(404).json({ ok: false, error: "Slideshow not found" });
+  }
+
+  broadcastState();
+  return res.json({ ok: true });
+});
 
 function assignSourceToScreen(screenId, sourceId) {
   const screen = getScreen(screenId) || getActiveScreen();
@@ -209,6 +379,7 @@ function assignSourceToScreen(screenId, sourceId) {
 
   targetSlot.kind = "stream";
   targetSlot.sourceId = sourceId;
+  targetSlot.slideshowId = null;
 }
 
 function removeControllerSources(socketId) {
@@ -235,14 +406,40 @@ function effectiveStopwatchElapsedMs(swState, atMs = nowMs()) {
 }
 
 setInterval(() => {
+  let changed = false;
+
   if (state.timer.running) {
     const remaining = effectiveTimerRemainingSec(state.timer);
     if (remaining <= 0) {
       state.timer.running = false;
       state.timer.startedAt = null;
       state.timer.remainingSec = 0;
-      broadcastState();
+      changed = true;
     }
+  }
+
+  const now = nowMs();
+  for (const slideshow of state.slideshows) {
+    if (!slideshow.playing || !slideshow.slides.length) {
+      continue;
+    }
+
+    const stepMs = slideshow.intervalSec * 1000;
+    if (!slideshow.lastAdvancedAt) {
+      slideshow.lastAdvancedAt = now;
+      continue;
+    }
+
+    if (now - slideshow.lastAdvancedAt >= stepMs) {
+      const steps = Math.max(1, Math.floor((now - slideshow.lastAdvancedAt) / stepMs));
+      advanceSlideshow(slideshow, steps);
+      slideshow.lastAdvancedAt = now;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    broadcastState();
   }
 }, 200);
 
@@ -313,7 +510,7 @@ io.on("connection", (socket) => {
     broadcastState();
   });
 
-  socket.on("slot:set", ({ screenId, slotId, kind, sourceId, timezone }) => {
+  socket.on("slot:set", ({ screenId, slotId, kind, sourceId, slideshowId, timezone }) => {
     const screen = getScreen(screenId) || getActiveScreen();
     if (!screen) {
       return;
@@ -323,15 +520,20 @@ io.on("connection", (socket) => {
     if (!slot || slot.slotId > screen.slotCount) {
       return;
     }
-    if (!["stream", "clock", "timer", "stopwatch", "random"].includes(kind)) {
+    if (!["stream", "clock", "timer", "stopwatch", "random", "slideshow"].includes(kind)) {
       return;
     }
 
     slot.kind = kind;
     if (kind === "stream") {
       slot.sourceId = streamSources.has(sourceId) ? sourceId : null;
+      slot.slideshowId = null;
+    } else if (kind === "slideshow") {
+      slot.slideshowId = getSlideshow(slideshowId)?.slideshowId || null;
+      slot.sourceId = null;
     } else {
       slot.sourceId = null;
+      slot.slideshowId = null;
     }
 
     if (kind === "clock") {
@@ -485,6 +687,79 @@ io.on("connection", (socket) => {
       state.randomSelector.selected = state.randomSelector.options[idx];
     }
     state.randomSelector.updatedAt = nowMs();
+    broadcastState();
+  });
+
+  socket.on("slideshow:play", ({ slideshowId }) => {
+    const slideshow = getSlideshow(slideshowId);
+    if (!slideshow || !slideshow.slides.length) {
+      return;
+    }
+    slideshow.playing = true;
+    slideshow.lastAdvancedAt = nowMs();
+    slideshow.updatedAt = nowMs();
+    broadcastState();
+  });
+
+  socket.on("slideshow:pause", ({ slideshowId }) => {
+    const slideshow = getSlideshow(slideshowId);
+    if (!slideshow) {
+      return;
+    }
+    slideshow.playing = false;
+    slideshow.lastAdvancedAt = null;
+    slideshow.updatedAt = nowMs();
+    broadcastState();
+  });
+
+  socket.on("slideshow:next", ({ slideshowId }) => {
+    const slideshow = getSlideshow(slideshowId);
+    if (!slideshow) {
+      return;
+    }
+    advanceSlideshow(slideshow, 1);
+    if (slideshow.playing) {
+      slideshow.lastAdvancedAt = nowMs();
+    }
+    broadcastState();
+  });
+
+  socket.on("slideshow:prev", ({ slideshowId }) => {
+    const slideshow = getSlideshow(slideshowId);
+    if (!slideshow) {
+      return;
+    }
+    advanceSlideshow(slideshow, -1);
+    if (slideshow.playing) {
+      slideshow.lastAdvancedAt = nowMs();
+    }
+    broadcastState();
+  });
+
+  socket.on("slideshow:set-interval", ({ slideshowId, intervalSec }) => {
+    const slideshow = getSlideshow(slideshowId);
+    if (!slideshow) {
+      return;
+    }
+    slideshow.intervalSec = clampIntervalSec(intervalSec);
+    if (slideshow.playing) {
+      slideshow.lastAdvancedAt = nowMs();
+    }
+    slideshow.updatedAt = nowMs();
+    broadcastState();
+  });
+
+  socket.on("slideshow:set-index", ({ slideshowId, index }) => {
+    const slideshow = getSlideshow(slideshowId);
+    if (!slideshow || !slideshow.slides.length) {
+      return;
+    }
+    const safeIndex = Math.max(0, Math.min(slideshow.slides.length - 1, Number(index || 0)));
+    slideshow.currentIndex = safeIndex;
+    if (slideshow.playing) {
+      slideshow.lastAdvancedAt = nowMs();
+    }
+    slideshow.updatedAt = nowMs();
     broadcastState();
   });
 
