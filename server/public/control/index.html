@@ -19,8 +19,8 @@
       <section class="card">
         <div class="row wrap screen-toolbar">
           <div>
-            <h2>Screens</h2>
-            <p class="muted">Each tab has its own layout and slot assignment.</p>
+            <h2>Screen Setup</h2>
+            <p class="muted">Choose a screen, then manage that screen's layout and slot assignments below.</p>
           </div>
           <div class="row wrap">
             <button id="addScreenBtn">Add Screen</button>
@@ -28,15 +28,20 @@
           </div>
         </div>
         <div id="screenTabs" class="tabs"></div>
-      </section>
 
-      <section class="card">
-        <h2>Layout</h2>
-        <div class="row wrap">
-          <button data-layout="single">Single</button>
-          <button data-layout="split-h">Split Horizontal</button>
-          <button data-layout="split-v">Split Vertical</button>
-          <button data-layout="grid-2x2">Grid 2x2</button>
+        <div class="config-block">
+          <h3>Layout</h3>
+          <div class="row wrap">
+            <button data-layout="single">Single</button>
+            <button data-layout="split-h">Split Horizontal</button>
+            <button data-layout="split-v">Split Vertical</button>
+            <button data-layout="grid-2x2">Grid 2x2</button>
+          </div>
+        </div>
+
+        <div class="config-block">
+          <h3>Slot Assignment</h3>
+          <div id="slotControls" class="stack"></div>
         </div>
       </section>
 
@@ -50,12 +55,12 @@
         <p id="sourceInfo" class="muted">No active source.</p>
       </section>
 
-      <section class="card">
-        <h2>Slot Assignment</h2>
-        <div id="slotControls" class="stack"></div>
-      </section>
-
       <section class="card grid2">
+        <div>
+          <h2>Site-Wide Controls</h2>
+          <p class="muted">Clock, timer, stopwatch, and random selector update every screen.</p>
+        </div>
+
         <div>
           <h2>Clock</h2>
           <p class="muted">Clock appears when a slot kind is set to Clock.</p>
