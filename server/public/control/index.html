@@ -50,9 +50,16 @@
         <p class="muted">Share your screen when supported, or fall back to your camera on phones and other limited browsers.</p>
         <div class="row wrap">
           <input id="sourceLabel" placeholder="Label (e.g. Alice Screen)" />
+          <select id="streamProfile">
+            <option value="lan-high">LAN High (30 FPS, ~12 Mbps)</option>
+            <option value="balanced" selected>Balanced (15 FPS, ~2.5 Mbps)</option>
+            <option value="mobile-10">Mobile Saver (10 FPS, ~900 kbps)</option>
+            <option value="mobile-5">Mobile Ultra Saver (5 FPS, ~350 kbps)</option>
+          </select>
           <button id="startSourceBtn">Start Screen/Camera</button>
           <button id="stopSourceBtn" class="danger" disabled>Stop Sharing</button>
         </div>
+        <p id="streamProfileHint" class="muted"></p>
         <p id="sourceInfo" class="muted">No active source.</p>
       </section>
 

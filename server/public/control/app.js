@@ -7,6 +7,8 @@ const displayPageLink = document.getElementById("displayPageLink");
 const addScreenBtn = document.getElementById("addScreenBtn");
 const removeScreenBtn = document.getElementById("removeScreenBtn");
 const sourceLabelInput = document.getElementById("sourceLabel");
+const streamProfileSelect = document.getElementById("streamProfile");
+const streamProfileHint = document.getElementById("streamProfileHint");
 const startSourceBtn = document.getElementById("startSourceBtn");
 const stopSourceBtn = document.getElementById("stopSourceBtn");
 const sourceInfo = document.getElementById("sourceInfo");
@@ -20,6 +22,29 @@ const layoutButtons = Array.from(document.querySelectorAll("[data-layout]"));
 
 const pcBySourceAndTarget = new Map();
 const localStreams = new Map();
+
+const STREAM_PROFILES = {
+  "lan-high": {
+    label: "LAN High",
+    maxFps: 30,
+    maxBitrateBps: 12_000_000
+  },
+  balanced: {
+    label: "Balanced",
+    maxFps: 15,
+    maxBitrateBps: 2_500_000
+  },
+  "mobile-10": {
+    label: "Mobile Saver",
+    maxFps: 10,
+    maxBitrateBps: 900_000
+  },
+  "mobile-5": {
+    label: "Mobile Ultra Saver",
+    maxFps: 5,
+    maxBitrateBps: 350_000
+  }
+};
 
 let myName = `Controller-${Math.random().toString(16).slice(2, 6)}`;
 let mySourceId = null;
@@ -36,6 +61,24 @@ function getActiveScreen(state = latestState) {
 
 function key(sourceId, targetSocketId) {
   return `${sourceId}::${targetSocketId}`;
+}
+
+function getSelectedProfile() {
+  return STREAM_PROFILES[streamProfileSelect.value] || STREAM_PROFILES.balanced;
+}
+
+function formatBitrate(bps) {
+  if (bps >= 1_000_000) {
+    return `${(bps / 1_000_000).toFixed(1)} Mbps`;
+  }
+  return `${Math.round(bps / 1000)} kbps`;
+}
+
+function updateStreamProfileHint() {
+  const profile = getSelectedProfile();
+  streamProfileHint.textContent = `Profile: ${profile.label} | Up to ${profile.maxFps} FPS | Up to ${formatBitrate(
+    profile.maxBitrateBps
+  )}`;
 }
 
 function formatTimer(sec) {
@@ -249,6 +292,7 @@ function describeCameraError(err) {
 }
 
 async function getDisplayStreamWithFallback() {
+  const profile = getSelectedProfile();
   if (!window.isSecureContext) {
     throw new Error(
       "Screen sharing needs a secure context (HTTPS or localhost). Open this page via HTTPS or run locally with localhost."
@@ -260,7 +304,10 @@ async function getDisplayStreamWithFallback() {
   }
 
   try {
-    return await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    return await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: { ideal: profile.maxFps, max: profile.maxFps } },
+      audio: true
+    });
   } catch (err) {
     const isConstraintIssue = err?.name === "TypeError" || err?.name === "OverconstrainedError";
     if (!isConstraintIssue) {
@@ -268,11 +315,15 @@ async function getDisplayStreamWithFallback() {
     }
 
     // Some browser/OS combinations reject audio capture constraints.
-    return navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    return navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: { ideal: profile.maxFps, max: profile.maxFps } },
+      audio: false
+    });
   }
 }
 
 async function getCameraStream() {
+  const profile = getSelectedProfile();
   if (!window.isSecureContext) {
     throw new Error(
       "Camera sharing needs a secure context (HTTPS or localhost). Open this page via HTTPS or run locally with localhost."
@@ -284,7 +335,10 @@ async function getCameraStream() {
   }
 
   return navigator.mediaDevices.getUserMedia({
-    video: { facingMode: "environment" },
+    video: {
+      facingMode: "environment",
+      frameRate: { ideal: profile.maxFps, max: profile.maxFps }
+    },
     audio: true
   });
 }
@@ -323,7 +377,7 @@ async function ensureSourceStarted() {
     mySourceId = sourceId;
     mySourceKind = sourceKind;
     localStreams.set(sourceId, stream);
-    sourceInfo.textContent = `Active ${sourceKind}: ${sourceId}`;
+    sourceInfo.textContent = `Active ${sourceKind}: ${sourceId} (${getSelectedProfile().label})`;
     stopSourceBtn.disabled = false;
 
     const [videoTrack] = stream.getVideoTracks();
@@ -353,6 +407,53 @@ function stopMySource() {
   stopSourceBtn.disabled = true;
   mySourceId = null;
   mySourceKind = null;
+}
+
+async function applyProfileToPeerConnection(pc, profile) {
+  const videoSender = pc.getSenders().find((sender) => sender.track?.kind === "video");
+  if (!videoSender) {
+    return;
+  }
+
+  try {
+    const params = videoSender.getParameters();
+    if (!params.encodings || !params.encodings.length) {
+      params.encodings = [{}];
+    }
+    params.encodings[0].maxBitrate = profile.maxBitrateBps;
+    params.encodings[0].maxFramerate = profile.maxFps;
+    await videoSender.setParameters(params);
+  } catch (err) {
+    console.warn("Unable to set sender bitrate/fps parameters", err);
+  }
+}
+
+async function applyProfileToCurrentSource() {
+  if (!mySourceId) {
+    return;
+  }
+
+  const profile = getSelectedProfile();
+  const stream = localStreams.get(mySourceId);
+  const [videoTrack] = stream?.getVideoTracks() || [];
+
+  if (videoTrack) {
+    try {
+      await videoTrack.applyConstraints({ frameRate: { ideal: profile.maxFps, max: profile.maxFps } });
+    } catch (err) {
+      console.warn("Unable to apply video track constraints", err);
+    }
+  }
+
+  const pending = [];
+  for (const [pcKey, pc] of pcBySourceAndTarget.entries()) {
+    if (pcKey.startsWith(`${mySourceId}::`)) {
+      pending.push(applyProfileToPeerConnection(pc, profile));
+    }
+  }
+
+  await Promise.all(pending);
+  sourceInfo.textContent = `Active ${mySourceKind || "source"}: ${mySourceId} (${profile.label})`;
 }
 
 async function createOfferForTarget(sourceId, targetSocketId) {
@@ -389,6 +490,8 @@ async function createOfferForTarget(sourceId, targetSocketId) {
 
     pcBySourceAndTarget.set(k, pc);
   }
+
+  await applyProfileToPeerConnection(pc, getSelectedProfile());
 
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
@@ -469,6 +572,11 @@ removeScreenBtn.addEventListener("click", () => {
   socket.emit("screen:remove", { screenId: activeScreen.screenId });
 });
 
+streamProfileSelect.addEventListener("change", async () => {
+  updateStreamProfileHint();
+  await applyProfileToCurrentSource();
+});
+
 startSourceBtn.addEventListener("click", async () => {
   try {
     await ensureSourceStarted();
@@ -510,3 +618,5 @@ setInterval(() => {
     swPreview.textContent = formatStopwatch(computeStopwatch(latestState));
   }
 }, 150);
+
+updateStreamProfileHint();
