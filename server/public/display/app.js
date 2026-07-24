@@ -6,12 +6,37 @@ const screenId = params.get("screenId") || displayId;
 const stage = document.getElementById("stage");
 const displayIdText = document.getElementById("displayIdText");
 const connState = document.getElementById("connState");
+const fullscreenBtn = document.getElementById("fullscreenBtn");
 
 displayIdText.textContent = `Display: ${displayId} | Screen: ${screenId}`;
 
 const pcBySource = new Map();
 const mediaBySource = new Map();
 let currentState = null;
+
+function isFullscreenActive() {
+  return Boolean(document.fullscreenElement);
+}
+
+function updateFullscreenButtonVisibility() {
+  if (!fullscreenBtn) {
+    return;
+  }
+
+  fullscreenBtn.classList.toggle("hidden", isFullscreenActive());
+}
+
+async function requestFullscreenMode() {
+  if (!document.documentElement.requestFullscreen) {
+    return;
+  }
+
+  try {
+    await document.documentElement.requestFullscreen();
+  } catch (err) {
+    console.error("Failed to enter fullscreen", err);
+  }
+}
 
 function getCurrentScreen(state = currentState) {
   if (!state?.screens?.length) {
@@ -343,5 +368,12 @@ socket.on("webrtc:ice", async ({ sourceId, fromSocketId, candidate }) => {
     console.error("Failed adding ICE candidate", err);
   }
 });
+
+if (fullscreenBtn) {
+  fullscreenBtn.addEventListener("click", requestFullscreenMode);
+}
+
+document.addEventListener("fullscreenchange", updateFullscreenButtonVisibility);
+updateFullscreenButtonVisibility();
 
 setInterval(tickWidgets, 100);
