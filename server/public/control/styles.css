@@ -98,6 +98,12 @@ p {
   border-color: rgba(255, 255, 255, 0.28);
 }
 
+button[data-layout].active {
+  background: var(--accent);
+  color: #05211c;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
 .text-link {
   color: #9ee6de;
   text-decoration: none;

@@ -16,6 +16,7 @@ const timerPreview = document.getElementById("timerPreview");
 const swPreview = document.getElementById("swPreview");
 const randomOptions = document.getElementById("randomOptions");
 const randomPreview = document.getElementById("randomPreview");
+const layoutButtons = Array.from(document.querySelectorAll("[data-layout]"));
 
 const pcBySourceAndTarget = new Map();
 const localStreams = new Map();
@@ -119,6 +120,16 @@ function buildSlotControls(state, screen) {
 
   const streams = state.streams || [];
 
+  function emitSlotUpdate(slotId, kindValue, sourceValue, timezoneValue) {
+    socket.emit("slot:set", {
+      screenId: screen.screenId,
+      slotId,
+      kind: kindValue,
+      sourceId: sourceValue || null,
+      timezone: timezoneValue || "UTC"
+    });
+  }
+
   for (let i = 1; i <= screen.slotCount; i += 1) {
     const slot = screen.slots.find((s) => s.slotId === i);
     const panel = document.createElement("div");
@@ -154,17 +165,17 @@ function buildSlotControls(state, screen) {
     tzInput.placeholder = "Timezone (e.g. Europe/London)";
     tzInput.value = slot.timezone || "UTC";
 
-    const applyBtn = document.createElement("button");
-    applyBtn.textContent = "Apply";
-    applyBtn.onclick = () => {
-      socket.emit("slot:set", {
-        screenId: screen.screenId,
-        slotId: i,
-        kind: kindSelect.value,
-        sourceId: streamSelect.value || null,
-        timezone: tzInput.value || "UTC"
-      });
-    };
+    kindSelect.addEventListener("change", () => {
+      emitSlotUpdate(i, kindSelect.value, streamSelect.value, tzInput.value);
+    });
+
+    streamSelect.addEventListener("change", () => {
+      emitSlotUpdate(i, kindSelect.value, streamSelect.value, tzInput.value);
+    });
+
+    tzInput.addEventListener("input", () => {
+      emitSlotUpdate(i, kindSelect.value, streamSelect.value, tzInput.value);
+    });
 
     const row1 = document.createElement("div");
     row1.className = "row wrap";
@@ -174,7 +185,6 @@ function buildSlotControls(state, screen) {
     const row2 = document.createElement("div");
     row2.className = "row wrap";
     row2.appendChild(tzInput);
-    row2.appendChild(applyBtn);
 
     panel.appendChild(title);
     panel.appendChild(row1);
@@ -189,6 +199,9 @@ function renderState(state) {
   buildScreenTabs(state);
   buildSlotControls(state, activeScreen);
   updateDisplayLink(activeScreen);
+  layoutButtons.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.layout === activeScreen?.layout);
+  });
   timerPreview.textContent = formatTimer(computeTimer(state));
   swPreview.textContent = formatStopwatch(computeStopwatch(state));
   randomPreview.textContent = state.randomSelector.selected || "No selection";
@@ -379,7 +392,7 @@ socket.on("webrtc:ice", async ({ sourceId, fromSocketId, candidate }) => {
   }
 });
 
-document.querySelectorAll("[data-layout]").forEach((btn) => {
+layoutButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     const activeScreen = getActiveScreen();
     if (!activeScreen) return;
