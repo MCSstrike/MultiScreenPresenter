@@ -33,11 +33,19 @@ const uploadStorage = multer.diskStorage({
   }
 });
 
-const upload = multer({
+const imageUpload = multer({
   storage: uploadStorage,
   limits: {
     files: 500,
     fileSize: 25 * 1024 * 1024
+  }
+});
+
+const pptxUpload = multer({
+  storage: uploadStorage,
+  limits: {
+    files: 1,
+    fileSize: 200 * 1024 * 1024
   }
 });
 
@@ -425,7 +433,7 @@ function cleanupSource(sourceId) {
   }
 }
 
-app.post("/api/slideshows/images", upload.array("slides", 500), (req, res) => {
+app.post("/api/slideshows/images", imageUpload.array("slides", 500), (req, res) => {
   const files = Array.isArray(req.files) ? req.files : [];
   if (!files.length) {
     return res.status(400).json({ ok: false, error: "No files uploaded" });
@@ -451,7 +459,7 @@ app.post("/api/slideshows/images", upload.array("slides", 500), (req, res) => {
   return res.json({ ok: true, slideshow });
 });
 
-app.post("/api/slideshows/pptx", upload.single("pptx"), async (req, res) => {
+app.post("/api/slideshows/pptx", pptxUpload.single("pptx"), async (req, res) => {
   const pptxFile = req.file;
   if (!pptxFile) {
     return res.status(400).json({ ok: false, error: "No PPTX file uploaded" });
@@ -544,6 +552,38 @@ app.delete("/api/slideshows/:slideshowId", (req, res) => {
 
   broadcastState();
   return res.json({ ok: true });
+});
+
+app.use((err, req, res, next) => {
+  if (!req.path.startsWith("/api/")) {
+    return next(err);
+  }
+
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        ok: false,
+        error: "Uploaded file is too large. PPTX max is 200MB; image file max is 25MB each."
+      });
+    }
+
+    if (err.code === "LIMIT_FILE_COUNT") {
+      return res.status(400).json({
+        ok: false,
+        error: "Too many files uploaded in one request."
+      });
+    }
+
+    return res.status(400).json({
+      ok: false,
+      error: `Upload failed: ${err.message || err.code}`
+    });
+  }
+
+  return res.status(500).json({
+    ok: false,
+    error: err?.message || "Unexpected server error"
+  });
 });
 
 function assignSourceToScreen(screenId, sourceId) {

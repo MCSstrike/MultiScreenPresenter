@@ -182,6 +182,27 @@ function setSlideshowStatus(message) {
   slideshowStatus.textContent = message;
 }
 
+async function readApiPayload(response) {
+  const bodyText = await response.text();
+  let payload = null;
+
+  try {
+    payload = bodyText ? JSON.parse(bodyText) : null;
+  } catch (_err) {
+    payload = null;
+  }
+
+  if (!payload || typeof payload !== "object") {
+    const fallback = bodyText ? bodyText.slice(0, 200).replace(/\s+/g, " ").trim() : "No response body";
+    payload = {
+      ok: false,
+      error: `Server returned a non-JSON response (${response.status} ${response.statusText}). ${fallback}`
+    };
+  }
+
+  return payload;
+}
+
 function renderSlideshowControls(state) {
   const slideshows = getAllSlideshows(state);
   const selected = getSelectedSlideshow(state);
@@ -245,7 +266,7 @@ async function createSlideshowFromSelectedFiles() {
       method: "POST",
       body: formData
     });
-    const payload = await response.json();
+    const payload = await readApiPayload(response);
 
     if (!response.ok || !payload.ok) {
       throw new Error(payload.error || "Upload failed");
@@ -281,7 +302,7 @@ async function createSlideshowFromPptx() {
       method: "POST",
       body: formData
     });
-    const payload = await response.json();
+    const payload = await readApiPayload(response);
 
     if (!response.ok || !payload.ok) {
       throw new Error(payload.error || "PPTX conversion failed");
@@ -874,7 +895,7 @@ slideshowDeleteBtn.addEventListener("click", async () => {
     const response = await fetch(`/api/slideshows/${encodeURIComponent(slideshow.slideshowId)}`, {
       method: "DELETE"
     });
-    const payload = await response.json();
+    const payload = await readApiPayload(response);
     if (!response.ok || !payload.ok) {
       throw new Error(payload.error || "Delete failed");
     }
