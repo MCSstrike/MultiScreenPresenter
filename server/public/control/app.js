@@ -24,6 +24,7 @@ const localStreams = new Map();
 let myName = `Controller-${Math.random().toString(16).slice(2, 6)}`;
 let mySourceId = null;
 let latestState = null;
+let mySourceKind = null;
 
 function getActiveScreen(state = latestState) {
   if (!state?.screens?.length) {
@@ -230,6 +231,23 @@ function describeShareError(err) {
   return `${name}: ${message}`;
 }
 
+function describeCameraError(err) {
+  const name = err?.name || "Error";
+  const message = err?.message || "Unknown error";
+
+  if (name === "NotAllowedError") {
+    return "Camera access was blocked. Allow camera permission in the browser and try again.";
+  }
+  if (name === "NotFoundError") {
+    return "No camera was found on this device.";
+  }
+  if (name === "NotReadableError") {
+    return "The camera is already in use by another app.";
+  }
+
+  return `${name}: ${message}`;
+}
+
 async function getDisplayStreamWithFallback() {
   if (!window.isSecureContext) {
     throw new Error(
@@ -254,12 +272,48 @@ async function getDisplayStreamWithFallback() {
   }
 }
 
+async function getCameraStream() {
+  if (!window.isSecureContext) {
+    throw new Error(
+      "Camera sharing needs a secure context (HTTPS or localhost). Open this page via HTTPS or run locally with localhost."
+    );
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw new Error("This browser does not support camera capture (getUserMedia).");
+  }
+
+  return navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "environment" },
+    audio: true
+  });
+}
+
+async function getPreferredMediaStream() {
+  if (navigator.mediaDevices?.getDisplayMedia) {
+    try {
+      const stream = await getDisplayStreamWithFallback();
+      return { stream, sourceKind: "screen" };
+    } catch (err) {
+      const shouldTryCamera = ["NotFoundError", "TypeError", "OverconstrainedError", "NotSupportedError"].includes(
+        err?.name
+      );
+      if (!shouldTryCamera) {
+        throw err;
+      }
+    }
+  }
+
+  const stream = await getCameraStream();
+  return { stream, sourceKind: "camera" };
+}
+
 async function ensureSourceStarted() {
   if (mySourceId && localStreams.has(mySourceId)) {
     return;
   }
 
-  const stream = await getDisplayStreamWithFallback();
+  const { stream, sourceKind } = await getPreferredMediaStream();
 
   socket.emit("source:start", {
     label: sourceLabelInput.value.trim() || `${myName} Stream`
@@ -267,8 +321,9 @@ async function ensureSourceStarted() {
 
   socket.once("source:started", ({ sourceId }) => {
     mySourceId = sourceId;
+    mySourceKind = sourceKind;
     localStreams.set(sourceId, stream);
-    sourceInfo.textContent = `Active source: ${sourceId}`;
+    sourceInfo.textContent = `Active ${sourceKind}: ${sourceId}`;
     stopSourceBtn.disabled = false;
 
     const [videoTrack] = stream.getVideoTracks();
@@ -297,6 +352,7 @@ function stopMySource() {
   sourceInfo.textContent = "No active source.";
   stopSourceBtn.disabled = true;
   mySourceId = null;
+  mySourceKind = null;
 }
 
 async function createOfferForTarget(sourceId, targetSocketId) {
@@ -418,7 +474,7 @@ startSourceBtn.addEventListener("click", async () => {
     await ensureSourceStarted();
   } catch (err) {
     console.error(err);
-    const detail = describeShareError(err);
+    const detail = err?.message?.includes("camera") || err?.message?.includes("Camera") ? describeCameraError(err) : describeShareError(err);
     sourceInfo.textContent = `Share failed: ${detail}`;
     alert(`Unable to start sharing. ${detail}`);
   }
