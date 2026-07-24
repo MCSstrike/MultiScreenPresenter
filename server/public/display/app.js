@@ -1,16 +1,25 @@
 const socket = io();
 const params = new URLSearchParams(window.location.search);
 const displayId = params.get("displayId") || `display-${Math.random().toString(16).slice(2, 8)}`;
+const screenId = params.get("screenId") || displayId;
 
 const stage = document.getElementById("stage");
 const displayIdText = document.getElementById("displayIdText");
 const connState = document.getElementById("connState");
 
-displayIdText.textContent = `Display: ${displayId}`;
+displayIdText.textContent = `Display: ${displayId} | Screen: ${screenId}`;
 
 const pcBySource = new Map();
 const mediaBySource = new Map();
 let currentState = null;
+
+function getCurrentScreen(state = currentState) {
+  if (!state?.screens?.length) {
+    return null;
+  }
+
+  return state.screens.find((screen) => screen.screenId === screenId) || state.screens[0];
+}
 
 function formatTimer(sec) {
   const s = Math.max(0, Math.floor(sec));
@@ -222,12 +231,20 @@ function renderState(state) {
   if (!state) return;
   currentState = state;
 
-  const slotCount = slotCountForLayout(state.layout);
-  stage.className = `layout-${state.layout}`;
+  const screen = getCurrentScreen(state);
+  if (!screen) {
+    stage.innerHTML = "";
+    return;
+  }
+
+  displayIdText.textContent = `Display: ${displayId} | Screen: ${screen.screenId}`;
+
+  const slotCount = slotCountForLayout(screen.layout);
+  stage.className = `layout-${screen.layout}`;
   stage.innerHTML = "";
 
   for (let i = 1; i <= slotCount; i += 1) {
-    const cfg = state.slots.find((s) => s.slotId === i);
+    const cfg = screen.slots.find((s) => s.slotId === i);
     stage.appendChild(buildSlot(cfg, state));
   }
 
@@ -262,15 +279,15 @@ function tickWidgets() {
 
 socket.on("connect", () => {
   connState.textContent = `Connected ${socket.id.slice(0, 8)}`;
-  socket.emit("register:display", { displayId });
+  socket.emit("register:display", { displayId, screenId });
 });
 
 socket.on("disconnect", () => {
   connState.textContent = "Disconnected";
 });
 
-socket.on("display:registered", ({ displayId: confirmed }) => {
-  displayIdText.textContent = `Display: ${confirmed}`;
+socket.on("display:registered", ({ displayId: confirmed, screenId: confirmedScreenId }) => {
+  displayIdText.textContent = `Display: ${confirmed} | Screen: ${confirmedScreenId}`;
 });
 
 socket.on("state:init", renderState);

@@ -9,12 +9,17 @@ require("dotenv").config();
 
 const PORT = Number(process.env.PORT || 3000);
 const ORIGIN = process.env.ORIGIN || "*";
+const DEFAULT_SCREEN_ID = "screen-1";
 
 const app = express();
 app.use(cors({ origin: ORIGIN === "*" ? true : ORIGIN }));
 app.use(express.static(path.join(__dirname, "..", "public")));
 
 const CADDY_ROOT_CERT_PATH = "/caddy-data/caddy/pki/authorities/local/root.crt";
+
+app.get("/", (_, res) => {
+  res.redirect("/control");
+});
 
 app.get("/health", (_, res) => {
   res.json({ ok: true, service: "multiscreen-server" });
@@ -50,35 +55,28 @@ const io = new Server(server, {
   pingTimeout: 20000
 });
 
+function createDefaultSlots() {
+  return [1, 2, 3, 4].map((slotId) => ({
+    slotId,
+    kind: "stream",
+    sourceId: null,
+    timezone: "UTC"
+  }));
+}
+
+function createScreen(screenId, name) {
+  return {
+    screenId,
+    name: String(name || "Screen"),
+    layout: "single",
+    slotCount: 1,
+    slots: createDefaultSlots()
+  };
+}
+
 const state = {
-  layout: "single", // single | split-h | split-v | grid-2x2
-  slotCount: 1,
-  slots: [
-    {
-      slotId: 1,
-      kind: "stream", // stream | clock | timer | stopwatch | random
-      sourceId: null,
-      timezone: "UTC"
-    },
-    {
-      slotId: 2,
-      kind: "stream",
-      sourceId: null,
-      timezone: "UTC"
-    },
-    {
-      slotId: 3,
-      kind: "stream",
-      sourceId: null,
-      timezone: "UTC"
-    },
-    {
-      slotId: 4,
-      kind: "stream",
-      sourceId: null,
-      timezone: "UTC"
-    }
-  ],
+  activeScreenId: DEFAULT_SCREEN_ID,
+  screens: [createScreen(DEFAULT_SCREEN_ID, "Screen 1")],
   timer: {
     durationSec: 300,
     startedFromSec: 300,
@@ -99,8 +97,7 @@ const state = {
 };
 
 const controllers = new Map(); // socketId -> { name }
-const displays = new Map(); // socketId -> { displayId }
-const displayIdToSocket = new Map(); // displayId -> socketId
+const displays = new Map(); // socketId -> { displayId, screenId }
 const streamSources = new Map(); // sourceId -> { ownerSocketId, label, createdAt }
 
 function nowMs() {
@@ -125,15 +122,61 @@ function slotCountForLayout(layout) {
   }
 }
 
+function getScreen(screenId) {
+  return state.screens.find((screen) => screen.screenId === screenId) || null;
+}
+
+function getNextScreenName() {
+  return `Screen ${state.screens.length + 1}`;
+}
+
+function ensureScreen(screenId, name = getNextScreenName()) {
+  const existing = getScreen(screenId);
+  if (existing) {
+    return existing;
+  }
+
+  const screen = createScreen(screenId, name);
+  state.screens.push(screen);
+  return screen;
+}
+
+function getActiveScreen() {
+  return getScreen(state.activeScreenId) || state.screens[0] || null;
+}
+
+function makeScreenId() {
+  let index = 1;
+  let screenId = `screen-${index}`;
+
+  while (getScreen(screenId)) {
+    index += 1;
+    screenId = `screen-${index}`;
+  }
+
+  return screenId;
+}
+
 function getPublicState() {
   return {
-    ...state,
+    activeScreenId: state.activeScreenId,
+    screens: state.screens.map((screen) => ({
+      ...screen,
+      slots: screen.slots.map((slot) => ({ ...slot }))
+    })),
+    timer: { ...state.timer },
+    stopwatch: { ...state.stopwatch },
+    randomSelector: {
+      ...state.randomSelector,
+      options: [...state.randomSelector.options]
+    },
     streams: Array.from(streamSources.entries()).map(([sourceId, info]) => ({
       sourceId,
       label: info.label,
       ownerSocketId: info.ownerSocketId,
       createdAt: info.createdAt
     })),
+    displays: Array.from(displays.values()).map((display) => ({ ...display })),
     serverTimeMs: nowMs()
   };
 }
@@ -142,10 +185,10 @@ function broadcastState() {
   io.emit("state:update", getPublicState());
 }
 
-function clampLayoutSlots() {
-  const maxSlots = slotCountForLayout(state.layout);
-  state.slotCount = maxSlots;
-  for (const slot of state.slots) {
+function clampScreenSlots(screen) {
+  const maxSlots = slotCountForLayout(screen.layout);
+  screen.slotCount = maxSlots;
+  for (const slot of screen.slots) {
     if (slot.slotId > maxSlots) {
       slot.kind = "stream";
       slot.sourceId = null;
@@ -156,11 +199,33 @@ function clampLayoutSlots() {
 
 function cleanupSource(sourceId) {
   streamSources.delete(sourceId);
-  for (const slot of state.slots) {
-    if (slot.sourceId === sourceId) {
-      slot.sourceId = null;
+  for (const screen of state.screens) {
+    for (const slot of screen.slots) {
+      if (slot.sourceId === sourceId) {
+        slot.sourceId = null;
+      }
     }
   }
+}
+
+function assignSourceToScreen(screenId, sourceId) {
+  const screen = getScreen(screenId) || getActiveScreen();
+  if (!screen) {
+    return;
+  }
+
+  const usableSlots = screen.slots.filter((slot) => slot.slotId <= screen.slotCount);
+  if (!usableSlots.length) {
+    return;
+  }
+
+  const targetSlot =
+    usableSlots.find((slot) => slot.kind === "stream" && !slot.sourceId) ||
+    usableSlots.find((slot) => slot.kind === "stream") ||
+    usableSlots[0];
+
+  targetSlot.kind = "stream";
+  targetSlot.sourceId = sourceId;
 }
 
 function removeControllerSources(socketId) {
@@ -205,27 +270,74 @@ io.on("connection", (socket) => {
     broadcastState();
   });
 
-  socket.on("register:display", ({ displayId }) => {
+  socket.on("register:display", ({ displayId, screenId }) => {
     const safeId = String(displayId || `display-${crypto.randomUUID().slice(0, 8)}`);
-    displays.set(socket.id, { displayId: safeId });
-    displayIdToSocket.set(safeId, socket.id);
-    socket.emit("display:registered", { displayId: safeId });
+    const safeScreenId = String(screenId || safeId);
+
+    ensureScreen(safeScreenId);
+    displays.set(socket.id, { displayId: safeId, screenId: safeScreenId });
+    socket.emit("display:registered", { displayId: safeId, screenId: safeScreenId });
     socket.emit("state:init", getPublicState());
     broadcastState();
   });
 
-  socket.on("layout:set", ({ layout }) => {
-    if (!["single", "split-h", "split-v", "grid-2x2"].includes(layout)) {
+  socket.on("screen:select", ({ screenId }) => {
+    if (!getScreen(screenId)) {
       return;
     }
-    state.layout = layout;
-    clampLayoutSlots();
+    state.activeScreenId = screenId;
     broadcastState();
   });
 
-  socket.on("slot:set", ({ slotId, kind, sourceId, timezone }) => {
-    const slot = state.slots.find((s) => s.slotId === Number(slotId));
-    if (!slot || slot.slotId > state.slotCount) {
+  socket.on("screen:add", ({ name }) => {
+    const screenId = makeScreenId();
+    const screen = ensureScreen(screenId, String(name || getNextScreenName()));
+    state.activeScreenId = screen.screenId;
+    broadcastState();
+  });
+
+  socket.on("screen:remove", ({ screenId }) => {
+    if (state.screens.length <= 1) {
+      return;
+    }
+
+    const index = state.screens.findIndex((screen) => screen.screenId === screenId);
+    if (index === -1) {
+      return;
+    }
+
+    state.screens.splice(index, 1);
+
+    if (state.activeScreenId === screenId) {
+      state.activeScreenId = state.screens[0].screenId;
+    }
+
+    broadcastState();
+  });
+
+  socket.on("layout:set", ({ screenId, layout }) => {
+    if (!["single", "split-h", "split-v", "grid-2x2"].includes(layout)) {
+      return;
+    }
+
+    const screen = getScreen(screenId) || getActiveScreen();
+    if (!screen) {
+      return;
+    }
+
+    screen.layout = layout;
+    clampScreenSlots(screen);
+    broadcastState();
+  });
+
+  socket.on("slot:set", ({ screenId, slotId, kind, sourceId, timezone }) => {
+    const screen = getScreen(screenId) || getActiveScreen();
+    if (!screen) {
+      return;
+    }
+
+    const slot = screen.slots.find((s) => s.slotId === Number(slotId));
+    if (!slot || slot.slotId > screen.slotCount) {
       return;
     }
     if (!["stream", "clock", "timer", "stopwatch", "random"].includes(kind)) {
@@ -253,6 +365,7 @@ io.on("connection", (socket) => {
       label: String(label || "Shared Screen"),
       createdAt: nowMs()
     });
+    assignSourceToScreen(state.activeScreenId, sourceId);
     socket.emit("source:started", { sourceId });
     broadcastState();
   });
@@ -399,8 +512,6 @@ io.on("connection", (socket) => {
     }
 
     if (displays.has(socket.id)) {
-      const { displayId } = displays.get(socket.id);
-      displayIdToSocket.delete(displayId);
       displays.delete(socket.id);
     }
 

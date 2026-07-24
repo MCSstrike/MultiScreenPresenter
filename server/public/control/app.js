@@ -2,6 +2,10 @@ const socket = io();
 
 const connStatus = document.getElementById("connStatus");
 const slotControls = document.getElementById("slotControls");
+const screenTabs = document.getElementById("screenTabs");
+const displayPageLink = document.getElementById("displayPageLink");
+const addScreenBtn = document.getElementById("addScreenBtn");
+const removeScreenBtn = document.getElementById("removeScreenBtn");
 const sourceLabelInput = document.getElementById("sourceLabel");
 const startSourceBtn = document.getElementById("startSourceBtn");
 const stopSourceBtn = document.getElementById("stopSourceBtn");
@@ -19,6 +23,14 @@ const localStreams = new Map();
 let myName = `Controller-${Math.random().toString(16).slice(2, 6)}`;
 let mySourceId = null;
 let latestState = null;
+
+function getActiveScreen(state = latestState) {
+  if (!state?.screens?.length) {
+    return null;
+  }
+
+  return state.screens.find((screen) => screen.screenId === state.activeScreenId) || state.screens[0];
+}
 
 function key(sourceId, targetSocketId) {
   return `${sourceId}::${targetSocketId}`;
@@ -78,17 +90,42 @@ function getSlotPositionLabel(layout, slotId) {
   return "";
 }
 
-function buildSlotControls(state) {
+function updateDisplayLink(screen) {
+  const screenId = screen?.screenId || "screen-1";
+  displayPageLink.href = `/display?screenId=${encodeURIComponent(screenId)}`;
+}
+
+function buildScreenTabs(state) {
+  screenTabs.innerHTML = "";
+
+  (state.screens || []).forEach((screen) => {
+    const btn = document.createElement("button");
+    btn.className = `tab-btn${screen.screenId === state.activeScreenId ? " active" : ""}`;
+    btn.textContent = screen.name || screen.screenId;
+    btn.onclick = () => {
+      socket.emit("screen:select", { screenId: screen.screenId });
+    };
+    screenTabs.appendChild(btn);
+  });
+
+  removeScreenBtn.disabled = (state.screens || []).length <= 1;
+}
+
+function buildSlotControls(state, screen) {
   slotControls.innerHTML = "";
+  if (!screen) {
+    return;
+  }
+
   const streams = state.streams || [];
 
-  for (let i = 1; i <= state.slotCount; i += 1) {
-    const slot = state.slots.find((s) => s.slotId === i);
+  for (let i = 1; i <= screen.slotCount; i += 1) {
+    const slot = screen.slots.find((s) => s.slotId === i);
     const panel = document.createElement("div");
     panel.className = "slot-panel";
 
     const title = document.createElement("h3");
-    const posLabel = getSlotPositionLabel(state.layout, i);
+    const posLabel = getSlotPositionLabel(screen.layout, i);
     title.textContent = posLabel ? `Slot ${i} (${posLabel})` : `Slot ${i}`;
 
     const kindSelect = document.createElement("select");
@@ -121,6 +158,7 @@ function buildSlotControls(state) {
     applyBtn.textContent = "Apply";
     applyBtn.onclick = () => {
       socket.emit("slot:set", {
+        screenId: screen.screenId,
         slotId: i,
         kind: kindSelect.value,
         sourceId: streamSelect.value || null,
@@ -147,7 +185,10 @@ function buildSlotControls(state) {
 
 function renderState(state) {
   latestState = state;
-  buildSlotControls(state);
+  const activeScreen = getActiveScreen(state);
+  buildScreenTabs(state);
+  buildSlotControls(state, activeScreen);
+  updateDisplayLink(activeScreen);
   timerPreview.textContent = formatTimer(computeTimer(state));
   swPreview.textContent = formatStopwatch(computeStopwatch(state));
   randomPreview.textContent = state.randomSelector.selected || "No selection";
@@ -340,8 +381,23 @@ socket.on("webrtc:ice", async ({ sourceId, fromSocketId, candidate }) => {
 
 document.querySelectorAll("[data-layout]").forEach((btn) => {
   btn.addEventListener("click", () => {
-    socket.emit("layout:set", { layout: btn.dataset.layout });
+    const activeScreen = getActiveScreen();
+    if (!activeScreen) return;
+    socket.emit("layout:set", {
+      screenId: activeScreen.screenId,
+      layout: btn.dataset.layout
+    });
   });
+});
+
+addScreenBtn.addEventListener("click", () => {
+  socket.emit("screen:add", {});
+});
+
+removeScreenBtn.addEventListener("click", () => {
+  const activeScreen = getActiveScreen();
+  if (!activeScreen) return;
+  socket.emit("screen:remove", { screenId: activeScreen.screenId });
 });
 
 startSourceBtn.addEventListener("click", async () => {

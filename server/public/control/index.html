@@ -10,8 +10,25 @@
     <main class="shell">
       <header class="topbar">
         <h1>Multiscreen Control</h1>
-        <div class="badge" id="connStatus">Connecting...</div>
+        <div class="row wrap header-actions">
+          <a id="displayPageLink" class="text-link" href="/display" target="_blank" rel="noreferrer">Open active display</a>
+          <div class="badge" id="connStatus">Connecting...</div>
+        </div>
       </header>
+
+      <section class="card">
+        <div class="row wrap screen-toolbar">
+          <div>
+            <h2>Screens</h2>
+            <p class="muted">Each tab has its own layout and slot assignment.</p>
+          </div>
+          <div class="row wrap">
+            <button id="addScreenBtn">Add Screen</button>
+            <button id="removeScreenBtn" class="danger">Remove Active Screen</button>
+          </div>
+        </div>
+        <div id="screenTabs" class="tabs"></div>
+      </section>
 
       <section class="card">
         <h2>Layout</h2>
