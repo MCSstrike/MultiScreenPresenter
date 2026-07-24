@@ -65,7 +65,7 @@
 
       <section class="card">
         <h2>Slideshows (PowerPoint or Pictures)</h2>
-        <p class="muted">For PowerPoint, export slides as images (PNG/JPG) and upload those files or the slide folder.</p>
+        <p class="muted">Upload pictures, a picture folder, or a .pptx file directly.</p>
 
         <div class="stack">
           <div class="row wrap">
@@ -84,7 +84,15 @@
               <input id="slideshowFolder" type="file" accept="image/*" webkitdirectory directory multiple />
             </label>
 
-            <button id="slideshowUploadBtn">Create Slideshow</button>
+            <button id="slideshowUploadBtn">Create Slideshow from Pictures</button>
+          </div>
+
+          <div class="row wrap">
+            <label class="file-pick">
+              <span>Select PPTX</span>
+              <input id="slideshowPptx" type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+            </label>
+            <button id="slideshowUploadPptxBtn">Create Slideshow from PPTX</button>
           </div>
 
           <p id="slideshowStatus" class="muted">No slideshow upload in progress.</p>

@@ -15,8 +15,9 @@ A local-first, low-latency multiscreen presentation system with:
   - Random selector
 - Slideshows:
   - Upload a folder of pictures and play it on any display slot
+  - Upload `.pptx` files directly (server converts slides to images)
   - Set auto-advance speed and control play/pause/next/previous
-  - PowerPoint supported via exported slide images (PNG/JPG)
+  - PowerPoint also supported via exported slide images (PNG/JPG)
 
 ## Architecture
 
@@ -135,13 +136,14 @@ Then open:
 ### Slideshows (Pictures / PowerPoint)
 
 - Create slideshow from multiple image files or a whole folder
+- Create slideshow from a `.pptx` file (automatic conversion on server)
 - Assign slideshow to a slot by setting slot kind to `slideshow`
 - Control slideshow playback globally from `/control`:
   - Play / pause
   - Previous / next slide
   - Drag to a specific slide
   - Set seconds per slide (auto-advance speed)
-- For PowerPoint decks: export your `.pptx` as slide images (`.png` or `.jpg`) and upload those images.
+- If direct `.pptx` conversion tools are unavailable on your server, export slides as images (`.png` or `.jpg`) and upload those images.
 
 ## Important Browser Notes
 

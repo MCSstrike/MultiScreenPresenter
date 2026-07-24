@@ -1,6 +1,8 @@
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const crypto = require("crypto");
+const { spawn } = require("child_process");
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
@@ -140,6 +142,122 @@ function removeFileQuiet(filePath) {
   } catch (_err) {
     // Best effort cleanup for rejected uploads.
   }
+}
+
+function removeDirQuiet(dirPath) {
+  try {
+    fs.rmSync(dirPath, { recursive: true, force: true });
+  } catch (_err) {
+    // Best effort cleanup.
+  }
+}
+
+function runCommand(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      ...options
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk || "");
+    });
+
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk || "");
+    });
+
+    child.on("error", (err) => {
+      reject(err);
+    });
+
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+        return;
+      }
+      const error = new Error(`Command failed: ${command} ${args.join(" ")} (exit ${code})`);
+      error.code = code;
+      error.stdout = stdout;
+      error.stderr = stderr;
+      reject(error);
+    });
+  });
+}
+
+function sortSlidesByFilename(paths) {
+  return [...paths].sort((a, b) => {
+    const aName = path.basename(a);
+    const bName = path.basename(b);
+    const aMatch = aName.match(/(\d+)/);
+    const bMatch = bName.match(/(\d+)/);
+    const aNum = aMatch ? Number(aMatch[1]) : 0;
+    const bNum = bMatch ? Number(bMatch[1]) : 0;
+    if (aNum !== bNum) {
+      return aNum - bNum;
+    }
+    return aName.localeCompare(bName, undefined, { sensitivity: "base" });
+  });
+}
+
+function normalizePptxSlideName(value) {
+  return sanitizeForFilename(path.basename(value || "slide", path.extname(value || ""))) || "slides";
+}
+
+function createSlideshowFromUploadedFiles(files, name, intervalSec) {
+  const sorted = [...files].sort((a, b) =>
+    String(a.originalname || "").localeCompare(String(b.originalname || ""), undefined, {
+      numeric: true,
+      sensitivity: "base"
+    })
+  );
+
+  return {
+    slideshowId: makeSlideshowId(),
+    name,
+    slides: sorted.map((file) => ({
+      url: `/uploads/slides/${path.basename(file.filename)}`,
+      name: String(file.originalname || path.basename(file.filename))
+    })),
+    currentIndex: 0,
+    intervalSec: clampIntervalSec(intervalSec),
+    playing: false,
+    loop: true,
+    lastAdvancedAt: null,
+    createdAt: nowMs(),
+    updatedAt: nowMs()
+  };
+}
+
+function persistConvertedSlideFiles(slideFilePaths, baseName) {
+  const slideshowBase = normalizePptxSlideName(baseName);
+  const persisted = [];
+
+  for (const sourcePath of slideFilePaths) {
+    const ext = path.extname(sourcePath).toLowerCase() || ".png";
+    const safeTargetName = `${Date.now()}-${crypto.randomUUID()}-${slideshowBase}${ext}`;
+    const targetPath = path.join(UPLOAD_SLIDES_DIR, safeTargetName);
+    fs.copyFileSync(sourcePath, targetPath);
+    persisted.push({
+      filename: safeTargetName,
+      originalname: path.basename(sourcePath),
+      path: targetPath
+    });
+  }
+
+  return persisted;
+}
+
+function isPptxFile(file) {
+  if (!file) {
+    return false;
+  }
+
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  return ext === ".pptx";
 }
 
 function isImageFile(file) {
@@ -322,32 +440,99 @@ app.post("/api/slideshows/images", upload.array("slides", 500), (req, res) => {
     });
   }
 
-  const sorted = [...files].sort((a, b) =>
-    String(a.originalname || "").localeCompare(String(b.originalname || ""), undefined, {
-      numeric: true,
-      sensitivity: "base"
-    })
+  const slideshow = createSlideshowFromUploadedFiles(
+    files,
+    String(req.body?.name || "Slideshow").trim().slice(0, 120) || "Slideshow",
+    req.body?.intervalSec
   );
-
-  const slideshow = {
-    slideshowId: makeSlideshowId(),
-    name: String(req.body?.name || "Slideshow").trim().slice(0, 120) || "Slideshow",
-    slides: sorted.map((file) => ({
-      url: `/uploads/slides/${path.basename(file.filename)}`,
-      name: String(file.originalname || path.basename(file.filename))
-    })),
-    currentIndex: 0,
-    intervalSec: clampIntervalSec(req.body?.intervalSec),
-    playing: false,
-    loop: true,
-    lastAdvancedAt: null,
-    createdAt: nowMs(),
-    updatedAt: nowMs()
-  };
 
   state.slideshows.push(slideshow);
   broadcastState();
   return res.json({ ok: true, slideshow });
+});
+
+app.post("/api/slideshows/pptx", upload.single("pptx"), async (req, res) => {
+  const pptxFile = req.file;
+  if (!pptxFile) {
+    return res.status(400).json({ ok: false, error: "No PPTX file uploaded" });
+  }
+
+  if (!isPptxFile(pptxFile)) {
+    removeFileQuiet(pptxFile.path);
+    return res.status(400).json({ ok: false, error: "Only .pptx files are supported for this upload." });
+  }
+
+  let tempDirUsed = null;
+  const copiedSlides = [];
+
+  try {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "msp-pptx-work-"));
+    tempDirUsed = tempDir;
+    const localPptxPath = path.join(tempDir, path.basename(pptxFile.filename));
+    fs.copyFileSync(pptxFile.path, localPptxPath);
+
+    const generatedSlides = await (async () => {
+      await runCommand("soffice", ["--headless", "--convert-to", "pdf", "--outdir", tempDir, localPptxPath]);
+
+      const convertedEntries = fs.readdirSync(tempDir);
+      const pdfName = convertedEntries.find((entry) => path.extname(entry).toLowerCase() === ".pdf");
+      if (!pdfName) {
+        throw new Error("PPTX conversion did not produce a PDF output.");
+      }
+
+      const pdfPath = path.join(tempDir, pdfName);
+      const outputPrefix = path.join(tempDir, "slide");
+      await runCommand("pdftoppm", ["-png", pdfPath, outputPrefix]);
+
+      const pngSlides = sortSlidesByFilename(
+        fs
+          .readdirSync(tempDir)
+          .filter((entry) => /^slide-\d+\.png$/i.test(entry))
+          .map((entry) => path.join(tempDir, entry))
+      );
+
+      if (!pngSlides.length) {
+        throw new Error("PPTX conversion succeeded but produced zero slide images.");
+      }
+
+      return pngSlides;
+    })();
+
+    const persisted = persistConvertedSlideFiles(generatedSlides, req.body?.name || pptxFile.originalname || "slides");
+    copiedSlides.push(...persisted);
+
+    const slideshow = createSlideshowFromUploadedFiles(
+      persisted,
+      String(req.body?.name || path.basename(pptxFile.originalname || "Slideshow", ".pptx")).trim().slice(0, 120) ||
+        "Slideshow",
+      req.body?.intervalSec
+    );
+
+    state.slideshows.push(slideshow);
+    broadcastState();
+    return res.json({ ok: true, slideshow });
+  } catch (err) {
+    copiedSlides.forEach((slide) => removeFileQuiet(slide.path));
+
+    const missingBinary = err?.code === "ENOENT";
+    if (missingBinary) {
+      return res.status(500).json({
+        ok: false,
+        error:
+          "PPTX conversion tools are not installed on this server. Install LibreOffice (soffice) and poppler (pdftoppm), then retry."
+      });
+    }
+
+    return res.status(500).json({
+      ok: false,
+      error: `Failed to convert PPTX: ${err.message || "Unknown error"}`
+    });
+  } finally {
+    removeFileQuiet(pptxFile.path);
+    if (tempDirUsed) {
+      removeDirQuiet(tempDirUsed);
+    }
+  }
 });
 
 app.delete("/api/slideshows/:slideshowId", (req, res) => {

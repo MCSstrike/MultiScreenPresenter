@@ -17,6 +17,8 @@ const slideshowIntervalInput = document.getElementById("slideshowInterval");
 const slideshowFilesInput = document.getElementById("slideshowFiles");
 const slideshowFolderInput = document.getElementById("slideshowFolder");
 const slideshowUploadBtn = document.getElementById("slideshowUploadBtn");
+const slideshowPptxInput = document.getElementById("slideshowPptx");
+const slideshowUploadPptxBtn = document.getElementById("slideshowUploadPptxBtn");
 const slideshowStatus = document.getElementById("slideshowStatus");
 const slideshowSelect = document.getElementById("slideshowSelect");
 const slideshowPlayBtn = document.getElementById("slideshowPlay");
@@ -257,6 +259,52 @@ async function createSlideshowFromSelectedFiles() {
     console.error("Failed creating slideshow", err);
     setSlideshowStatus(`Slideshow upload failed: ${err.message || "Unknown error"}`);
   }
+}
+
+async function createSlideshowFromPptx() {
+  const pptxFile = slideshowPptxInput.files?.[0];
+  if (!pptxFile) {
+    setSlideshowStatus("Select a .pptx file before creating a slideshow.");
+    return;
+  }
+
+  const intervalSec = Number(slideshowIntervalInput.value || 5);
+  const formData = new FormData();
+  formData.append("name", slideshowNameInput.value.trim() || pathBasenameWithoutExt(pptxFile.name) || "Slideshow");
+  formData.append("intervalSec", String(intervalSec));
+  formData.append("pptx", pptxFile, pptxFile.name);
+
+  setSlideshowStatus("Uploading and converting PPTX. This can take a little while...");
+
+  try {
+    const response = await fetch("/api/slideshows/pptx", {
+      method: "POST",
+      body: formData
+    });
+    const payload = await response.json();
+
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload.error || "PPTX conversion failed");
+    }
+
+    selectedSlideshowId = payload.slideshow.slideshowId;
+    slideshowPptxInput.value = "";
+    setSlideshowStatus(
+      `Created slideshow \"${payload.slideshow.name}\" from PPTX with ${payload.slideshow.slides.length} slides.`
+    );
+  } catch (err) {
+    console.error("Failed creating slideshow from PPTX", err);
+    setSlideshowStatus(`PPTX upload failed: ${err.message || "Unknown error"}`);
+  }
+}
+
+function pathBasenameWithoutExt(filename) {
+  const name = String(filename || "").split(/[\\/]/).pop() || "";
+  const dot = name.lastIndexOf(".");
+  if (dot <= 0) {
+    return name;
+  }
+  return name.slice(0, dot);
 }
 
 function buildScreenTabs(state) {
@@ -761,6 +809,7 @@ document.getElementById("randomSave").onclick = () => {
 document.getElementById("randomRoll").onclick = () => socket.emit("random:roll");
 
 slideshowUploadBtn.addEventListener("click", createSlideshowFromSelectedFiles);
+slideshowUploadPptxBtn.addEventListener("click", createSlideshowFromPptx);
 
 slideshowSelect.addEventListener("change", () => {
   selectedSlideshowId = slideshowSelect.value || null;
