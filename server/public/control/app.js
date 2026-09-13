@@ -585,6 +585,10 @@ async function ensureSourceStarted() {
   }
 
   const { stream, sourceKind } = await getPreferredMediaStream();
+  const [videoTrack] = stream.getVideoTracks();
+  if (videoTrack && "contentHint" in videoTrack) {
+    videoTrack.contentHint = sourceKind === "screen" ? "detail" : "motion";
+  }
 
   socket.emit("source:start", {
     label: sourceLabelInput.value.trim() || `${myName} Stream`
@@ -597,7 +601,6 @@ async function ensureSourceStarted() {
     sourceInfo.textContent = `Active ${sourceKind}: ${sourceId} (${getSelectedProfile().label})`;
     stopSourceBtn.disabled = false;
 
-    const [videoTrack] = stream.getVideoTracks();
     if (videoTrack) {
       videoTrack.addEventListener("ended", () => stopMySource());
     }
@@ -681,7 +684,7 @@ async function createOfferForTarget(sourceId, targetSocketId) {
   let pc = pcBySourceAndTarget.get(k);
   if (!pc) {
     pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+      iceCandidatePoolSize: 2
     });
 
     stream.getTracks().forEach((track) => {

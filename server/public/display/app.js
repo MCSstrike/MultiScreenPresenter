@@ -7,12 +7,14 @@ const stage = document.getElementById("stage");
 const displayIdText = document.getElementById("displayIdText");
 const connState = document.getElementById("connState");
 const fullscreenBtn = document.getElementById("fullscreenBtn");
+const mediaStats = document.getElementById("mediaStats");
 
 displayIdText.textContent = `Display: ${displayId} | Screen: ${screenId}`;
 
 const pcBySource = new Map();
 const mediaBySource = new Map();
 let currentState = null;
+let renderedLayoutKey = null;
 
 function isFullscreenActive() {
   return Boolean(document.fullscreenElement);
@@ -104,9 +106,7 @@ function ensurePeerForSource(sourceId) {
     return pcBySource.get(sourceId);
   }
 
-  const pc = new RTCPeerConnection({
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-  });
+  const pc = new RTCPeerConnection({ iceCandidatePoolSize: 2 });
 
   pc.onicecandidate = (ev) => {
     if (ev.candidate) {
@@ -188,10 +188,12 @@ function buildRandom(state) {
 
   const big = document.createElement("div");
   big.className = "big";
+  big.dataset.widget = "random-big";
   big.textContent = state.randomSelector.selected || "No selection";
 
   const small = document.createElement("div");
   small.className = "small";
+  small.dataset.widget = "random-small";
   small.textContent = `${state.randomSelector.options.length} option(s)`;
 
   wrap.appendChild(big);
@@ -247,6 +249,7 @@ function buildSlideshow(slideshowId, state) {
   image.loading = "eager";
   image.decoding = "async";
   image.className = "slide-image";
+  image.dataset.slideshowId = slideshowId;
   wrap.appendChild(image);
 
   return wrap;
@@ -287,6 +290,26 @@ function buildSlot(slotCfg, state) {
   return slot;
 }
 
+function getLayoutKey(screen) {
+  const slotCount = slotCountForLayout(screen.layout);
+  const slotKey = Array.from({ length: slotCount }, (_, index) => {
+    const slot = screen.slots.find((item) => item.slotId === index + 1) || {};
+    return [slot.kind, slot.sourceId, slot.slideshowId, slot.timezone, mediaBySource.has(slot.sourceId)].join(":");
+  });
+  return `${screen.screenId}:${screen.layout}:${slotKey.join("|")}`;
+}
+
+function updateSlideshowImages(state) {
+  stage.querySelectorAll("img[data-slideshow-id]").forEach((image) => {
+    const slideshow = getSlideshow(image.dataset.slideshowId, state);
+    const slide = slideshow?.slides?.[slideshow.currentIndex];
+    if (slide && image.getAttribute("src") !== slide.url) {
+      image.src = slide.url;
+      image.alt = slide.name || "Slide";
+    }
+  });
+}
+
 function renderState(state) {
   if (!state) return;
   currentState = state;
@@ -294,18 +317,26 @@ function renderState(state) {
   const screen = getCurrentScreen(state);
   if (!screen) {
     stage.innerHTML = "";
+    renderedLayoutKey = null;
     return;
   }
 
   displayIdText.textContent = `Display: ${displayId} | Screen: ${screen.screenId}`;
+  const layoutKey = getLayoutKey(screen);
 
-  const slotCount = slotCountForLayout(screen.layout);
-  stage.className = `layout-${screen.layout}`;
-  stage.innerHTML = "";
+  if (layoutKey !== renderedLayoutKey) {
+    const slotCount = slotCountForLayout(screen.layout);
+    stage.className = `layout-${screen.layout}`;
+    stage.innerHTML = "";
 
-  for (let i = 1; i <= slotCount; i += 1) {
-    const cfg = screen.slots.find((s) => s.slotId === i);
-    stage.appendChild(buildSlot(cfg, state));
+    for (let i = 1; i <= slotCount; i += 1) {
+      const cfg = screen.slots.find((slot) => slot.slotId === i);
+      stage.appendChild(buildSlot(cfg, state));
+    }
+
+    renderedLayoutKey = layoutKey;
+  } else {
+    updateSlideshowImages(state);
   }
 
   tickWidgets();
@@ -335,6 +366,66 @@ function tickWidgets() {
   stage.querySelectorAll('[data-widget="stopwatch"]').forEach((el) => {
     el.textContent = formatStopwatch(computeStopwatch(currentState));
   });
+
+  stage.querySelectorAll('[data-widget="random-big"]').forEach((el) => {
+    el.textContent = currentState.randomSelector.selected || "No selection";
+  });
+
+  stage.querySelectorAll('[data-widget="random-small"]').forEach((el) => {
+    el.textContent = `${currentState.randomSelector.options.length} option(s)`;
+  });
+}
+
+function formatMilliseconds(seconds) {
+  return `${Math.round(seconds * 1000)} ms`;
+}
+
+async function updateMediaStats() {
+  if (!mediaStats) {
+    return;
+  }
+
+  const connections = [...pcBySource.values()];
+  if (!connections.length) {
+    mediaStats.textContent = "Media: waiting";
+    return;
+  }
+
+  try {
+    const measurements = await Promise.all(
+      connections.map(async (pc) => {
+        const stats = await pc.getStats();
+        const reports = [...stats.values()];
+        const inbound = reports.find((report) => report.type === "inbound-rtp" && report.kind === "video");
+        const pair = reports.find((report) => report.type === "candidate-pair" && report.nominated && report.state === "succeeded");
+        return { inbound, pair };
+      })
+    );
+
+    const inbound = measurements.map((measurement) => measurement.inbound).filter(Boolean);
+    const pairs = measurements.map((measurement) => measurement.pair).filter(Boolean);
+    if (!inbound.length) {
+      mediaStats.textContent = "Media: connecting";
+      return;
+    }
+
+    const fps = Math.round(inbound.reduce((total, report) => total + (report.framesPerSecond || 0), 0) / inbound.length);
+    const loss = inbound.reduce((total, report) => total + (report.packetsLost || 0), 0);
+    const bufferSamples = inbound.filter((report) => report.jitterBufferEmittedCount);
+    const bufferMs = bufferSamples.length
+      ? bufferSamples.reduce((total, report) => total + report.jitterBufferDelay / report.jitterBufferEmittedCount, 0) /
+        bufferSamples.length
+      : 0;
+    const rttSamples = pairs.filter((report) => Number.isFinite(report.currentRoundTripTime));
+    const rtt = rttSamples.length
+      ? rttSamples.reduce((total, report) => total + report.currentRoundTripTime, 0) / rttSamples.length
+      : null;
+
+    mediaStats.textContent = `Media: ${fps} fps | ${rtt === null ? "--" : formatMilliseconds(rtt)} RTT | ${formatMilliseconds(bufferMs)} buffer | ${loss} lost`;
+  } catch (err) {
+    console.warn("Unable to read WebRTC stats", err);
+    mediaStats.textContent = "Media: stats unavailable";
+  }
 }
 
 socket.on("connect", () => {
@@ -412,3 +503,4 @@ document.addEventListener("fullscreenchange", updateFullscreenButtonVisibility);
 updateFullscreenButtonVisibility();
 
 setInterval(tickWidgets, 100);
+setInterval(updateMediaStats, 1000);

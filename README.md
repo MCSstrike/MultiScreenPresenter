@@ -30,6 +30,8 @@ A local-first, low-latency multiscreen presentation system with:
 
 All signaling and state are local to your network (LAN), and media flows peer-to-peer between controllers and display devices.
 
+WebRTC is configured for direct LAN connections only. Controllers and displays must therefore have direct UDP reachability to each other (for example, be on the same LAN or have inter-VLAN UDP permitted). For networks that cannot provide this, deploy a local TURN server and add it to the peer configuration.
+
 ## Quick Start (Docker)
 
 1. Copy env file:
@@ -118,6 +120,7 @@ Then open:
 - Source can be assigned to any slot
 - Multiple controller users can stream concurrently
 - Up to 4 stream slots at once
+- Each display HUD reports receive frame rate, round-trip time, playout buffer, and cumulative packet loss for active streams
 
 ### Layout Modes
 
