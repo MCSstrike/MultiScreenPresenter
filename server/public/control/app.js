@@ -34,7 +34,12 @@ const timerPreview = document.getElementById("timerPreview");
 const swPreview = document.getElementById("swPreview");
 const randomOptions = document.getElementById("randomOptions");
 const randomPreview = document.getElementById("randomPreview");
+const randomSaveBtn = document.getElementById("randomSave");
+const randomRollBtn = document.getElementById("randomRoll");
 const layoutButtons = Array.from(document.querySelectorAll("[data-layout]"));
+
+import { initRandomControl } from "./modules/random-control.js";
+const randomControl = initRandomControl(socket, randomOptions, randomPreview, randomSaveBtn, randomRollBtn);
 
 const pcBySourceAndTarget = new Map();
 const localStreams = new Map();
@@ -482,54 +487,6 @@ function buildSlotControls(state, screen) {
   }
 }
 
-let controlLastRollId = null;
-let controlRollTimer = null;
-
-function updateControlRandomState(state) {
-  const rs = state?.randomSelector;
-  const rollBtn = document.getElementById("randomRoll");
-  if (!rs || !randomPreview || !rollBtn) return;
-
-  if (rs.rollId && rs.rollId !== controlLastRollId && rs.rolledAt) {
-    controlLastRollId = rs.rollId;
-    const elapsed = Date.now() - rs.rolledAt;
-    const remaining = Math.max(0, (rs.durationMs || 2700) - elapsed);
-
-    if (remaining > 0 && rs.options.length > 0) {
-      if (controlRollTimer) clearInterval(controlRollTimer);
-      rollBtn.classList.add("is-rolling");
-      randomPreview.classList.add("is-rolling");
-      randomPreview.classList.remove("is-winner");
-
-      const startTime = Date.now();
-      controlRollTimer = setInterval(() => {
-        const timePassed = Date.now() - startTime;
-        if (timePassed >= remaining) {
-          clearInterval(controlRollTimer);
-          controlRollTimer = null;
-          rollBtn.classList.remove("is-rolling");
-          randomPreview.classList.remove("is-rolling");
-          randomPreview.textContent = rs.selected || "No selection";
-          if (rs.selected) {
-            randomPreview.classList.add("is-winner");
-          }
-        } else {
-          const randIdx = Math.floor(Math.random() * rs.options.length);
-          randomPreview.textContent = `🎲 ${rs.options[randIdx]}`;
-        }
-      }, 70);
-      return;
-    }
-  }
-
-  if (!controlRollTimer) {
-    rollBtn.classList.remove("is-rolling");
-    randomPreview.classList.remove("is-rolling");
-    randomPreview.textContent = rs.selected || "No selection";
-    randomPreview.classList.toggle("is-winner", Boolean(rs.selected));
-  }
-}
-
 function renderState(state) {
   latestState = state;
   const activeScreen = getActiveScreen(state);
@@ -542,7 +499,7 @@ function renderState(state) {
   });
   timerPreview.textContent = formatTimer(computeTimer(state));
   swPreview.textContent = formatStopwatch(computeStopwatch(state));
-  updateControlRandomState(state);
+  randomControl.updateState(state);
 }
 
 function describeShareError(err) {
@@ -905,16 +862,6 @@ document.getElementById("timerReset").onclick = () => socket.emit("timer:reset")
 document.getElementById("swStart").onclick = () => socket.emit("stopwatch:start");
 document.getElementById("swStop").onclick = () => socket.emit("stopwatch:stop");
 document.getElementById("swReset").onclick = () => socket.emit("stopwatch:reset");
-
-document.getElementById("randomSave").onclick = () => {
-  const options = randomOptions.value
-    .split("\n")
-    .map((x) => x.trim())
-    .filter(Boolean);
-  socket.emit("random:set-options", { options });
-};
-
-document.getElementById("randomRoll").onclick = () => socket.emit("random:roll");
 
 slideshowUploadBtn.addEventListener("click", createSlideshowFromSelectedFiles);
 slideshowUploadPptxBtn.addEventListener("click", createSlideshowFromPptx);
