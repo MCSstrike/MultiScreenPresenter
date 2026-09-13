@@ -676,7 +676,7 @@ export class RandomSelectorWidgetInstance {
 
     const cardText = document.createElement("div");
     cardText.className = "random-card-text";
-    cardText.textContent = "No options set (add in controller)";
+    cardText.textContent = "No options set";
     card.appendChild(cardText);
 
     this.reelTrack.appendChild(card);
