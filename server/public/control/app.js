@@ -916,34 +916,6 @@ document.getElementById("randomSave").onclick = () => {
 
 document.getElementById("randomRoll").onclick = () => socket.emit("random:roll");
 
-const presetNamesBtn = document.getElementById("randomPresetNames");
-if (presetNamesBtn) {
-  presetNamesBtn.onclick = () => {
-    randomOptions.value = ["Alice", "Bob", "Charlie", "Diana", "Ethan", "Fiona", "George", "Hannah"].join("\n");
-  };
-}
-
-const presetPrizesBtn = document.getElementById("randomPresetPrizes");
-if (presetPrizesBtn) {
-  presetPrizesBtn.onclick = () => {
-    randomOptions.value = ["🏆 Grand Prize", "💻 Laptop", "📱 Smartphone", "🎧 Noise-Cancelling Headphones", "☕ $50 Coffee Card", "🎒 Tech Backpack"].join("\n");
-  };
-}
-
-const presetNumbersBtn = document.getElementById("randomPresetNumbers");
-if (presetNumbersBtn) {
-  presetNumbersBtn.onclick = () => {
-    randomOptions.value = Array.from({ length: 10 }, (_, i) => `Number ${i + 1}`).join("\n");
-  };
-}
-
-const randomClearBtn = document.getElementById("randomClear");
-if (randomClearBtn) {
-  randomClearBtn.onclick = () => {
-    randomOptions.value = "";
-  };
-}
-
 slideshowUploadBtn.addEventListener("click", createSlideshowFromSelectedFiles);
 slideshowUploadPptxBtn.addEventListener("click", createSlideshowFromPptx);
 

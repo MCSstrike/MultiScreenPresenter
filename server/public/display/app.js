@@ -616,6 +616,22 @@ class RandomSelectorWidgetInstance {
     footer.appendChild(footerLabel);
     footer.appendChild(this.footerCount);
     this.container.appendChild(footer);
+
+    this.resizeObserver = new ResizeObserver(() => {
+      if (!this.isRolling) {
+        const activeCard = this.reelTrack.querySelector(".random-card.is-active") || this.reelTrack.firstElementChild;
+        if (activeCard) {
+          this.centerOnCard(activeCard);
+        }
+      }
+    });
+    this.resizeObserver.observe(this.container);
+  }
+
+  centerOnCard(card) {
+    if (!card) return;
+    const cy = card.offsetTop + card.offsetHeight / 2;
+    this.reelTrack.style.transform = `translate3d(0, ${-cy}px, 0)`;
   }
 
   update(state) {
@@ -677,13 +693,21 @@ class RandomSelectorWidgetInstance {
     sequence.push(winner || options[0] || "Winner");
 
     this.reelTrack.innerHTML = "";
-    this.reelTrack.style.transform = "translate3d(0, 0, 0)";
     this.reelTrack.style.filter = "none";
 
     const cardElements = sequence.map((text, idx) => {
+      const isLast = idx === sequence.length - 1;
       const card = document.createElement("div");
       card.className = "random-card";
       if (idx === 0) card.classList.add("is-active");
+
+      if (isLast) {
+        const banner = document.createElement("div");
+        banner.className = "random-winner-banner";
+        banner.textContent = "👑 WINNER";
+        banner.style.display = "none";
+        card.appendChild(banner);
+      }
 
       const cardText = document.createElement("div");
       cardText.className = "random-card-text";
@@ -695,9 +719,12 @@ class RandomSelectorWidgetInstance {
     });
 
     const firstCard = cardElements[0];
-    const cardRect = firstCard.getBoundingClientRect();
-    const itemHeight = cardRect.height ? cardRect.height + 12 : 90; // height + vertical margins
-    const targetY = -(totalSteps - 1) * itemHeight;
+    const lastCard = cardElements[cardElements.length - 1];
+
+    const y0 = firstCard.offsetTop + firstCard.offsetHeight / 2;
+    const yEnd = lastCard.offsetTop + lastCard.offsetHeight / 2;
+
+    this.reelTrack.style.transform = `translate3d(0, ${-y0}px, 0)`;
 
     let lastTickedStep = -1;
 
@@ -708,7 +735,7 @@ class RandomSelectorWidgetInstance {
 
       // Quintic ease-out for thrilling gradual deceleration
       const ease = 1 - Math.pow(1 - progress, 5);
-      const currentY = ease * targetY;
+      const currentY = -(y0 + ease * (yEnd - y0));
 
       this.reelTrack.style.transform = `translate3d(0, ${currentY}px, 0)`;
 
@@ -734,7 +761,7 @@ class RandomSelectorWidgetInstance {
         this.animFrameId = requestAnimationFrame(animate);
       } else {
         this.animFrameId = null;
-        this.finishRoll(winner, cardElements[cardElements.length - 1]);
+        this.finishRoll(winner, lastCard);
       }
     };
 
@@ -750,12 +777,16 @@ class RandomSelectorWidgetInstance {
 
     if (winnerCard) {
       winnerCard.classList.add("is-winner", "is-active");
-      if (!winnerCard.querySelector(".random-winner-banner")) {
-        const banner = document.createElement("div");
-        banner.className = "random-winner-banner";
-        banner.textContent = "👑 WINNER";
-        winnerCard.insertBefore(banner, winnerCard.firstChild);
+      const banner = winnerCard.querySelector(".random-winner-banner");
+      if (banner) {
+        banner.style.display = "";
+      } else {
+        const newBanner = document.createElement("div");
+        newBanner.className = "random-winner-banner";
+        newBanner.textContent = "👑 WINNER";
+        winnerCard.insertBefore(newBanner, winnerCard.firstChild);
       }
+      this.centerOnCard(winnerCard);
     }
 
     playWinFanfareSound();
@@ -767,7 +798,6 @@ class RandomSelectorWidgetInstance {
     this.container.classList.add("has-winner");
     this.badgeText.textContent = "🏆 WINNER SELECTED";
     this.reelTrack.innerHTML = "";
-    this.reelTrack.style.transform = "translate3d(0, 0, 0)";
     this.reelTrack.style.filter = "none";
 
     const card = document.createElement("div");
@@ -784,13 +814,13 @@ class RandomSelectorWidgetInstance {
     card.appendChild(cardText);
 
     this.reelTrack.appendChild(card);
+    this.centerOnCard(card);
   }
 
   renderStaticIdle(options) {
     this.container.classList.remove("is-rolling", "has-winner");
     this.badgeText.textContent = "🎲 RANDOM SELECTOR";
     this.reelTrack.innerHTML = "";
-    this.reelTrack.style.transform = "translate3d(0, 0, 0)";
     this.reelTrack.style.filter = "none";
 
     const card = document.createElement("div");
@@ -802,13 +832,13 @@ class RandomSelectorWidgetInstance {
     card.appendChild(cardText);
 
     this.reelTrack.appendChild(card);
+    this.centerOnCard(card);
   }
 
   renderStaticEmpty() {
     this.container.classList.remove("is-rolling", "has-winner");
     this.badgeText.textContent = "🎲 RANDOM SELECTOR";
     this.reelTrack.innerHTML = "";
-    this.reelTrack.style.transform = "translate3d(0, 0, 0)";
     this.reelTrack.style.filter = "none";
 
     const card = document.createElement("div");
@@ -820,12 +850,16 @@ class RandomSelectorWidgetInstance {
     card.appendChild(cardText);
 
     this.reelTrack.appendChild(card);
+    this.centerOnCard(card);
   }
 
   destroy() {
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
+    }
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
     }
     if (this.fx) {
       this.fx.destroy();
