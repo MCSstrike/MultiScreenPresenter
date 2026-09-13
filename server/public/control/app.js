@@ -38,6 +38,7 @@ const layoutButtons = Array.from(document.querySelectorAll("[data-layout]"));
 
 const pcBySourceAndTarget = new Map();
 const localStreams = new Map();
+const SOURCE_LABEL_STORAGE_KEY = "multiscreen-source-label";
 
 const STREAM_PROFILES = {
   "lan-high": {
@@ -82,6 +83,34 @@ function key(sourceId, targetSocketId) {
 
 function getSelectedProfile() {
   return STREAM_PROFILES[streamProfileSelect.value] || STREAM_PROFILES.balanced;
+}
+
+function getRequiredSourceLabel() {
+  const label = sourceLabelInput.value.trim();
+  if (label) {
+    return label;
+  }
+
+  sourceLabelInput.reportValidity();
+  sourceLabelInput.focus();
+  sourceInfo.textContent = "Enter a source name before sharing.";
+  return null;
+}
+
+function restoreSourceLabel() {
+  try {
+    sourceLabelInput.value = localStorage.getItem(SOURCE_LABEL_STORAGE_KEY) || "";
+  } catch (err) {
+    console.warn("Unable to restore source name", err);
+  }
+}
+
+function saveSourceLabel() {
+  try {
+    localStorage.setItem(SOURCE_LABEL_STORAGE_KEY, sourceLabelInput.value.trim());
+  } catch (err) {
+    console.warn("Unable to save source name", err);
+  }
 }
 
 function formatBitrate(bps) {
@@ -584,6 +613,11 @@ async function ensureSourceStarted() {
     return;
   }
 
+  const sourceLabel = getRequiredSourceLabel();
+  if (!sourceLabel) {
+    return;
+  }
+
   const { stream, sourceKind } = await getPreferredMediaStream();
   const [videoTrack] = stream.getVideoTracks();
   if (videoTrack && "contentHint" in videoTrack) {
@@ -591,7 +625,7 @@ async function ensureSourceStarted() {
   }
 
   socket.emit("source:start", {
-    label: sourceLabelInput.value.trim() || `${myName} Stream`
+    label: sourceLabel
   });
 
   socket.once("source:started", ({ sourceId }) => {
@@ -797,6 +831,8 @@ streamProfileSelect.addEventListener("change", async () => {
   await applyProfileToCurrentSource();
 });
 
+sourceLabelInput.addEventListener("input", saveSourceLabel);
+
 startSourceBtn.addEventListener("click", async () => {
   try {
     await ensureSourceStarted();
@@ -917,4 +953,5 @@ setInterval(() => {
   }
 }, 150);
 
+restoreSourceLabel();
 updateStreamProfileHint();
