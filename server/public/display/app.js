@@ -21,7 +21,13 @@ import { buildClock, buildTimer, buildStopwatch } from "./widgets/clock-widgets.
 import { buildRandom, clearRandomWidgets, updateRandomWidgets } from "./widgets/random-selector/random-selector.js";
 
 function isFullscreenActive() {
-  return Boolean(document.fullscreenElement);
+  return Boolean(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.mozFullScreenElement ||
+    document.msFullscreenElement ||
+    (window.matchMedia && window.matchMedia("(display-mode: fullscreen)").matches)
+  );
 }
 
 function updateFullscreenUi() {
@@ -35,12 +41,19 @@ function updateFullscreenUi() {
 }
 
 async function requestFullscreenMode() {
-  if (!document.documentElement.requestFullscreen) {
+  const elem = document.documentElement;
+  const requestMethod =
+    elem.requestFullscreen ||
+    elem.webkitRequestFullscreen ||
+    elem.mozRequestFullScreen ||
+    elem.msRequestFullscreen;
+
+  if (!requestMethod) {
     return;
   }
 
   try {
-    await document.documentElement.requestFullscreen();
+    await requestMethod.call(elem);
   } catch (err) {
     console.error("Failed to enter fullscreen", err);
   }
@@ -441,7 +454,18 @@ if (fullscreenBtn) {
   fullscreenBtn.addEventListener("click", requestFullscreenMode);
 }
 
-document.addEventListener("fullscreenchange", updateFullscreenUi);
+["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"].forEach((evt) => {
+  document.addEventListener(evt, updateFullscreenUi);
+});
+window.addEventListener("resize", updateFullscreenUi);
+if (window.matchMedia) {
+  const fsQuery = window.matchMedia("(display-mode: fullscreen)");
+  if (fsQuery.addEventListener) {
+    fsQuery.addEventListener("change", updateFullscreenUi);
+  } else if (fsQuery.addListener) {
+    fsQuery.addListener(updateFullscreenUi);
+  }
+}
 updateFullscreenUi();
 
 setInterval(tickWidgets, 100);

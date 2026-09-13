@@ -30,10 +30,39 @@ body {
   opacity: 0.8;
 }
 
-#hud.hidden,
+#hud.hidden {
+  display: none !important;
+}
+
+#fullscreenBtn.hidden {
+  display: none !important;
+}
+
 :fullscreen #hud,
-:-webkit-full-screen #hud {
-  display: none;
+:fullscreen #fullscreenBtn {
+  display: none !important;
+}
+
+:-webkit-full-screen #hud,
+:-webkit-full-screen #fullscreenBtn {
+  display: none !important;
+}
+
+:-moz-full-screen #hud,
+:-moz-full-screen #fullscreenBtn {
+  display: none !important;
+}
+
+:-ms-fullscreen #hud,
+:-ms-fullscreen #fullscreenBtn {
+  display: none !important;
+}
+
+@media (display-mode: fullscreen) {
+  #hud,
+  #fullscreenBtn {
+    display: none !important;
+  }
 }
 
 #hud span {
@@ -61,10 +90,6 @@ body {
 
 #fullscreenBtn:hover {
   background: rgba(255, 255, 255, 0.2);
-}
-
-#fullscreenBtn.hidden {
-  display: none;
 }
 
 #stage {
