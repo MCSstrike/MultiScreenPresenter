@@ -651,7 +651,7 @@ class RandomSelectorWidgetInstance {
       } else {
         this.lastHandledRollId = rs.rollId;
         if (rs.selected) {
-          this.renderStaticWinner(rs.selected);
+          this.renderStaticWinner(rs.selected, rs.options);
           return;
         }
       }
@@ -662,7 +662,7 @@ class RandomSelectorWidgetInstance {
     }
 
     if (rs.selected) {
-      this.renderStaticWinner(rs.selected);
+      this.renderStaticWinner(rs.selected, rs.options);
     } else if (rs.options.length > 0) {
       this.renderStaticIdle(rs.options);
     } else {
@@ -692,6 +692,13 @@ class RandomSelectorWidgetInstance {
     }
     sequence.push(winner || options[0] || "Winner");
 
+    // Add trailing buffer cards so items below the winner remain visible and fade out under the bottom mask
+    const bufferCount = 4;
+    for (let i = 0; i < bufferCount; i++) {
+      const randomOption = options[Math.floor(Math.random() * options.length)] || options[i % options.length] || "Option";
+      sequence.push(randomOption);
+    }
+
     this.reelTrack.innerHTML = "";
     this.reelTrack.style.filter = "none";
 
@@ -710,10 +717,10 @@ class RandomSelectorWidgetInstance {
     });
 
     const firstCard = cardElements[0];
-    const lastCard = cardElements[cardElements.length - 1];
+    const winnerCard = cardElements[totalSteps - 1];
 
     const y0 = firstCard.offsetTop + firstCard.offsetHeight / 2;
-    const yEnd = lastCard.offsetTop + lastCard.offsetHeight / 2;
+    const yEnd = winnerCard.offsetTop + winnerCard.offsetHeight / 2;
 
     this.reelTrack.style.transform = `translate3d(0, ${-y0}px, 0)`;
 
@@ -752,7 +759,7 @@ class RandomSelectorWidgetInstance {
         this.animFrameId = requestAnimationFrame(animate);
       } else {
         this.animFrameId = null;
-        this.finishRoll(winner, lastCard);
+        this.finishRoll(winner, winnerCard);
       }
     };
 
@@ -775,23 +782,40 @@ class RandomSelectorWidgetInstance {
     this.fx.spawnConfettiExplosion();
   }
 
-  renderStaticWinner(winner) {
+  renderStaticWinner(winner, options = []) {
     this.container.classList.remove("is-rolling");
     this.container.classList.add("has-winner");
     this.badgeText.textContent = "🏆 WINNER SELECTED";
     this.reelTrack.innerHTML = "";
     this.reelTrack.style.filter = "none";
 
-    const card = document.createElement("div");
-    card.className = "random-card is-winner is-active";
+    const opts = options && options.length ? options : [winner];
+    const wIdx = Math.max(0, opts.indexOf(winner));
 
-    const cardText = document.createElement("div");
-    cardText.className = "random-card-text";
-    cardText.textContent = winner;
-    card.appendChild(cardText);
+    const list = [];
+    for (let i = -3; i <= 3; i++) {
+      const idx = (((wIdx + i) % opts.length) + opts.length) % opts.length;
+      list.push({ text: i === 0 ? winner : opts[idx], isWinner: i === 0 });
+    }
 
-    this.reelTrack.appendChild(card);
-    this.centerOnCard(card);
+    let winnerCardEl = null;
+    list.forEach((item) => {
+      const card = document.createElement("div");
+      card.className = "random-card";
+      if (item.isWinner) {
+        card.classList.add("is-winner", "is-active");
+        winnerCardEl = card;
+      }
+      const cardText = document.createElement("div");
+      cardText.className = "random-card-text";
+      cardText.textContent = item.text;
+      card.appendChild(cardText);
+      this.reelTrack.appendChild(card);
+    });
+
+    if (winnerCardEl) {
+      this.centerOnCard(winnerCardEl);
+    }
   }
 
   renderStaticIdle(options) {
@@ -800,16 +824,28 @@ class RandomSelectorWidgetInstance {
     this.reelTrack.innerHTML = "";
     this.reelTrack.style.filter = "none";
 
-    const card = document.createElement("div");
-    card.className = "random-card is-active";
+    const opts = options || [];
+    const count = Math.min(Math.max(opts.length, 1), 7);
+    const mid = Math.floor(count / 2);
+    let midCardEl = null;
 
-    const cardText = document.createElement("div");
-    cardText.className = "random-card-text";
-    cardText.textContent = `Ready to Roll (${options.length} options)`;
-    card.appendChild(cardText);
+    for (let i = 0; i < count; i++) {
+      const card = document.createElement("div");
+      card.className = "random-card";
+      if (i === mid) {
+        card.classList.add("is-active");
+        midCardEl = card;
+      }
+      const cardText = document.createElement("div");
+      cardText.className = "random-card-text";
+      cardText.textContent = opts[i % opts.length] || "Ready";
+      card.appendChild(cardText);
+      this.reelTrack.appendChild(card);
+    }
 
-    this.reelTrack.appendChild(card);
-    this.centerOnCard(card);
+    if (midCardEl) {
+      this.centerOnCard(midCardEl);
+    }
   }
 
   renderStaticEmpty() {
