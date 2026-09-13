@@ -21,12 +21,14 @@ import { buildClock, buildTimer, buildStopwatch } from "./widgets/clock-widgets.
 import { buildRandom, clearRandomWidgets, updateRandomWidgets } from "./widgets/random-selector/random-selector.js";
 
 function isFullscreenActive() {
+  const isWindowFullscreen = Math.abs(window.innerHeight - screen.height) <= 2 && Math.abs(window.innerWidth - screen.width) <= 2;
   return Boolean(
     document.fullscreenElement ||
     document.webkitFullscreenElement ||
     document.mozFullScreenElement ||
     document.msFullscreenElement ||
-    (window.matchMedia && window.matchMedia("(display-mode: fullscreen)").matches)
+    (window.matchMedia && window.matchMedia("(display-mode: fullscreen)").matches) ||
+    isWindowFullscreen
   );
 }
 
@@ -40,23 +42,40 @@ function updateFullscreenUi() {
   }
 }
 
+async function toggleFullscreenMode() {
+  if (isFullscreenActive()) {
+    const exitMethod =
+      document.exitFullscreen ||
+      document.webkitExitFullscreen ||
+      document.mozCancelFullScreen ||
+      document.msExitFullscreen;
+    if (exitMethod) {
+      try {
+        await exitMethod.call(document);
+      } catch (err) {
+        console.error("Failed to exit fullscreen", err);
+      }
+    }
+  } else {
+    const elem = document.documentElement;
+    const requestMethod =
+      elem.requestFullscreen ||
+      elem.webkitRequestFullscreen ||
+      elem.mozRequestFullScreen ||
+      elem.msRequestFullscreen;
+    if (requestMethod) {
+      try {
+        await requestMethod.call(elem);
+      } catch (err) {
+        console.error("Failed to enter fullscreen", err);
+      }
+    }
+  }
+  updateFullscreenUi();
+}
+
 async function requestFullscreenMode() {
-  const elem = document.documentElement;
-  const requestMethod =
-    elem.requestFullscreen ||
-    elem.webkitRequestFullscreen ||
-    elem.mozRequestFullScreen ||
-    elem.msRequestFullscreen;
-
-  if (!requestMethod) {
-    return;
-  }
-
-  try {
-    await requestMethod.call(elem);
-  } catch (err) {
-    console.error("Failed to enter fullscreen", err);
-  }
+  await toggleFullscreenMode();
 }
 
 function getCurrentScreen(state = currentState) {
@@ -453,6 +472,13 @@ socket.on("webrtc:ice", async ({ sourceId, fromSocketId, candidate }) => {
 if (fullscreenBtn) {
   fullscreenBtn.addEventListener("click", requestFullscreenMode);
 }
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "F11" || e.code === "F11") {
+    e.preventDefault();
+    toggleFullscreenMode();
+  }
+});
 
 ["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"].forEach((evt) => {
   document.addEventListener(evt, updateFullscreenUi);
