@@ -117,7 +117,7 @@ const state = {
     selected: null,
     rollId: null,
     rolledAt: null,
-    durationMs: 3800,
+    durationMs: 2700,
     updatedAt: Date.now()
   },
   slideshows: []
@@ -919,7 +919,7 @@ io.on("connection", (socket) => {
       state.randomSelector.selected = state.randomSelector.options[idx];
       state.randomSelector.rollId = `roll_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
       state.randomSelector.rolledAt = nowMs();
-      state.randomSelector.durationMs = 3800;
+      state.randomSelector.durationMs = 2700;
     }
     state.randomSelector.updatedAt = nowMs();
     broadcastState();

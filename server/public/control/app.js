@@ -493,7 +493,7 @@ function updateControlRandomState(state) {
   if (rs.rollId && rs.rollId !== controlLastRollId && rs.rolledAt) {
     controlLastRollId = rs.rollId;
     const elapsed = Date.now() - rs.rolledAt;
-    const remaining = Math.max(0, (rs.durationMs || 3800) - elapsed);
+    const remaining = Math.max(0, (rs.durationMs || 2700) - elapsed);
 
     if (remaining > 0 && rs.options.length > 0) {
       if (controlRollTimer) clearInterval(controlRollTimer);

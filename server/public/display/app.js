@@ -642,7 +642,7 @@ class RandomSelectorWidgetInstance {
 
     if (rs.rollId && rs.rollId !== this.lastHandledRollId && rs.rolledAt) {
       const elapsed = Date.now() - rs.rolledAt;
-      const duration = rs.durationMs || 3800;
+      const duration = rs.durationMs || 2700;
 
       if (elapsed < duration + 400 && rs.options.length > 0) {
         this.lastHandledRollId = rs.rollId;
@@ -684,7 +684,7 @@ class RandomSelectorWidgetInstance {
     playWhooshSound();
 
     // Generate sequence ending on the winner
-    const totalSteps = 34;
+    const totalSteps = 26;
     const sequence = [];
     for (let i = 0; i < totalSteps - 1; i++) {
       const randomOption = options[Math.floor(Math.random() * options.length)] || "Option";
@@ -696,18 +696,9 @@ class RandomSelectorWidgetInstance {
     this.reelTrack.style.filter = "none";
 
     const cardElements = sequence.map((text, idx) => {
-      const isLast = idx === sequence.length - 1;
       const card = document.createElement("div");
       card.className = "random-card";
       if (idx === 0) card.classList.add("is-active");
-
-      if (isLast) {
-        const banner = document.createElement("div");
-        banner.className = "random-winner-banner";
-        banner.textContent = "👑 WINNER";
-        banner.style.display = "none";
-        card.appendChild(banner);
-      }
 
       const cardText = document.createElement("div");
       cardText.className = "random-card-text";
@@ -733,17 +724,17 @@ class RandomSelectorWidgetInstance {
       const elapsed = now - rolledAt;
       const progress = Math.min(1, Math.max(0, elapsed / durationMs));
 
-      // Quintic ease-out for thrilling gradual deceleration
-      const ease = 1 - Math.pow(1 - progress, 5);
+      // Cubic ease-out for energetic roll and clean landing
+      const ease = 1 - Math.pow(1 - progress, 3);
       const currentY = -(y0 + ease * (yEnd - y0));
 
       this.reelTrack.style.transform = `translate3d(0, ${currentY}px, 0)`;
 
       const speed = 1 - progress;
-      const blurPx = Math.max(0, Math.min(6, speed * 8));
+      const blurPx = Math.max(0, Math.min(4, speed * 6));
       this.reelTrack.style.filter = blurPx > 0.4 ? `blur(${blurPx}px)` : "none";
 
-      if (speed > 0.3) {
+      if (speed > 0.35) {
         this.fx.spawnRollingSparks();
       }
 
@@ -777,15 +768,6 @@ class RandomSelectorWidgetInstance {
 
     if (winnerCard) {
       winnerCard.classList.add("is-winner", "is-active");
-      const banner = winnerCard.querySelector(".random-winner-banner");
-      if (banner) {
-        banner.style.display = "";
-      } else {
-        const newBanner = document.createElement("div");
-        newBanner.className = "random-winner-banner";
-        newBanner.textContent = "👑 WINNER";
-        winnerCard.insertBefore(newBanner, winnerCard.firstChild);
-      }
       this.centerOnCard(winnerCard);
     }
 
@@ -802,11 +784,6 @@ class RandomSelectorWidgetInstance {
 
     const card = document.createElement("div");
     card.className = "random-card is-winner is-active";
-
-    const banner = document.createElement("div");
-    banner.className = "random-winner-banner";
-    banner.textContent = "👑 WINNER";
-    card.appendChild(banner);
 
     const cardText = document.createElement("div");
     cardText.className = "random-card-text";
