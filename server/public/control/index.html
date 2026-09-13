@@ -9,153 +9,116 @@
   <body>
     <main class="shell">
       <header class="topbar">
-        <h1>Multiscreen Control</h1>
-        <div class="row wrap header-actions">
-          <a id="displayPageLink" class="text-link" href="/display" target="_blank" rel="noreferrer">Open active display</a>
+        <div class="brand"><span class="brand-mark"></span><h1>Multiscreen</h1></div>
+        <div class="header-actions">
+          <a id="displayPageLink" class="display-link" href="/display" target="_blank" rel="noreferrer">Open display</a>
           <div class="badge" id="connStatus">Connecting...</div>
         </div>
       </header>
 
-      <section class="card">
-        <div class="row wrap screen-toolbar">
-          <div>
-            <h2>Screen Setup</h2>
-            <p class="muted">Choose a screen, then manage that screen's layout and slot assignments below.</p>
+      <section class="share-panel" aria-labelledby="share-heading">
+          <div class="share-copy">
+            <p class="eyebrow">Ready to present</p>
+            <h2 id="share-heading">Share your screen</h2>
+            <p id="sourceInfo" class="share-status">No active source.</p>
           </div>
-          <div class="row wrap">
-            <button id="addScreenBtn">Add Screen</button>
-            <button id="removeScreenBtn" class="danger">Remove Active Screen</button>
+          <div class="share-actions">
+            <button id="startSourceBtn" class="start-share">Start sharing</button>
+            <button id="stopSourceBtn" class="stop-share" disabled>Stop</button>
           </div>
-        </div>
-        <div id="screenTabs" class="tabs"></div>
-
-        <div class="config-block">
-          <h3>Layout</h3>
-          <div class="row wrap">
-            <button data-layout="single">Single</button>
-            <button data-layout="split-h">Split Horizontal</button>
-            <button data-layout="split-v">Split Vertical</button>
-            <button data-layout="grid-2x2">Grid 2x2</button>
+          <div class="stream-settings">
+            <input id="sourceLabel" aria-label="Source label" placeholder="Source name (optional)" />
+            <select id="streamProfile" aria-label="Streaming quality">
+              <option value="lan-high">LAN High (30 FPS, ~12 Mbps)</option>
+              <option value="balanced" selected>Balanced (15 FPS, ~2.5 Mbps)</option>
+              <option value="mobile-10">Mobile Saver (10 FPS, ~900 kbps)</option>
+              <option value="mobile-5">Mobile Ultra Saver (5 FPS, ~350 kbps)</option>
+            </select>
+            <p id="streamProfileHint" class="stream-hint"></p>
           </div>
-        </div>
-
-        <div class="config-block">
-          <h3>Slot Assignment</h3>
-          <div id="slotControls" class="stack"></div>
-        </div>
       </section>
 
-      <section class="card">
-        <h2>My Stream Source</h2>
-        <p class="muted">Share your screen when supported, or fall back to your camera on phones and other limited browsers.</p>
-        <div class="row wrap">
-          <input id="sourceLabel" placeholder="Label (e.g. Alice Screen)" />
-          <select id="streamProfile">
-            <option value="lan-high">LAN High (30 FPS, ~12 Mbps)</option>
-            <option value="balanced" selected>Balanced (15 FPS, ~2.5 Mbps)</option>
-            <option value="mobile-10">Mobile Saver (10 FPS, ~900 kbps)</option>
-            <option value="mobile-5">Mobile Ultra Saver (5 FPS, ~350 kbps)</option>
-          </select>
-          <button id="startSourceBtn">Start Screen/Camera</button>
-          <button id="stopSourceBtn" class="danger" disabled>Stop Sharing</button>
+        <details class="control-group">
+          <summary><span>Display setup</span><span class="summary-hint">Screens, layout, and content</span></summary>
+          <div class="group-content">
+            <div class="screen-toolbar">
+              <div id="screenTabs" class="tabs"></div>
+              <div class="screen-actions">
+                <button id="addScreenBtn">Add screen</button>
+                <button id="removeScreenBtn" class="danger">Remove</button>
+              </div>
         </div>
-        <p id="streamProfileHint" class="muted"></p>
-        <p id="sourceInfo" class="muted">No active source.</p>
-      </section>
-
-      <section class="card">
-        <h2>Slideshows (PowerPoint or Pictures)</h2>
-        <p class="muted">Upload pictures, a picture folder, or a .pptx file directly.</p>
-
-        <div class="stack">
-          <div class="row wrap">
-            <input id="slideshowName" placeholder="Slideshow name" />
-            <input id="slideshowInterval" type="number" min="0.5" max="3600" step="0.5" value="5" />
-          </div>
-
-          <div class="row wrap">
-            <label class="file-pick">
-              <span>Select Pictures</span>
-              <input id="slideshowFiles" type="file" accept="image/*" multiple />
-            </label>
-
-            <label class="file-pick">
-              <span>Select Folder</span>
-              <input id="slideshowFolder" type="file" accept="image/*" webkitdirectory directory multiple />
-            </label>
-
-            <button id="slideshowUploadBtn">Create Slideshow from Pictures</button>
-          </div>
-
-          <div class="row wrap">
-            <label class="file-pick">
-              <span>Select PPTX</span>
-              <input id="slideshowPptx" type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
-            </label>
-            <button id="slideshowUploadPptxBtn">Create Slideshow from PPTX</button>
-          </div>
-
-          <p id="slideshowStatus" class="muted">No slideshow upload in progress.</p>
-
-          <div class="row wrap">
-            <select id="slideshowSelect"></select>
-            <button id="slideshowPlay">Play</button>
-            <button id="slideshowPause">Pause</button>
-            <button id="slideshowPrev">Previous</button>
-            <button id="slideshowNext">Next</button>
-            <button id="slideshowDelete" class="danger">Delete</button>
-          </div>
-
-          <div class="row wrap">
-            <input id="slideshowIndex" type="range" min="0" max="0" step="1" value="0" />
-            <span id="slideshowIndexLabel" class="muted">Slide 0 / 0</span>
+          <div class="config-block">
+              <p class="section-label">Layout</p>
+              <div class="layout-options">
+                <button data-layout="single">Single</button>
+                <button data-layout="split-h">Horizontal</button>
+                <button data-layout="split-v">Vertical</button>
+                <button data-layout="grid-2x2">Grid</button>
+              </div>
+        </div>
+          <div class="config-block slot-config">
+              <p class="section-label">Slots</p>
+              <div id="slotControls" class="stack"></div>
           </div>
         </div>
-      </section>
+      </details>
 
-      <section class="card grid2">
-        <div>
-          <h2>Site-Wide Controls</h2>
-          <p class="muted">Clock, timer, stopwatch, and random selector update every screen.</p>
-        </div>
-
-        <div>
-          <h2>Clock</h2>
-          <p class="muted">Clock appears when a slot kind is set to Clock.</p>
-        </div>
-
-        <div>
-          <h2>Timer</h2>
-          <div class="row wrap">
-            <input id="timerSeconds" type="number" min="1" max="86400" value="300" />
-            <button id="timerSet">Set</button>
-            <button id="timerStart">Start</button>
-            <button id="timerStop">Stop</button>
-            <button id="timerReset">Reset</button>
+      <details class="control-group">
+          <summary><span>Slideshows</span><span class="summary-hint">Pictures and PowerPoint</span></summary>
+          <div class="group-content slideshow-content">
+            <div class="upload-grid">
+              <input id="slideshowName" aria-label="Slideshow name" placeholder="Slideshow name" />
+              <input id="slideshowInterval" aria-label="Seconds per slide" type="number" min="0.5" max="3600" step="0.5" value="5" />
+            </div>
+            <div class="row wrap">
+              <label class="file-pick"><span>Select pictures</span><input id="slideshowFiles" type="file" accept="image/*" multiple /></label>
+              <label class="file-pick"><span>Select folder</span><input id="slideshowFolder" type="file" accept="image/*" webkitdirectory directory multiple /></label>
+              <button id="slideshowUploadBtn">Create from pictures</button>
+            </div>
+            <div class="row wrap">
+              <label class="file-pick"><span>Select PowerPoint</span><input id="slideshowPptx" type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" /></label>
+              <button id="slideshowUploadPptxBtn">Create from PowerPoint</button>
+            </div>
+            <p id="slideshowStatus" class="muted">No slideshow upload in progress.</p>
+            <div class="slideshow-controls">
+              <select id="slideshowSelect" aria-label="Slideshow"></select>
+              <div class="row wrap">
+                <button id="slideshowPlay">Play</button>
+                <button id="slideshowPause">Pause</button>
+                <button id="slideshowPrev">Previous</button>
+                <button id="slideshowNext">Next</button>
+                <button id="slideshowDelete" class="danger">Delete</button>
+              </div>
+              <div class="row wrap">
+                <input id="slideshowIndex" aria-label="Slide position" type="range" min="0" max="0" step="1" value="0" />
+                <span id="slideshowIndexLabel" class="muted">Slide 0 / 0</span>
+              </div>
+            </div>
           </div>
-          <p id="timerPreview" class="muted">--:--</p>
-        </div>
+      </details>
 
-        <div>
-          <h2>Stopwatch</h2>
-          <div class="row wrap">
-            <button id="swStart">Start</button>
-            <button id="swStop">Stop</button>
-            <button id="swReset">Reset</button>
+      <details class="control-group">
+          <summary><span>Tools</span><span class="summary-hint">Timer, stopwatch, and randomizer</span></summary>
+          <div class="group-content tools-grid">
+            <section>
+              <p class="section-label">Timer</p>
+              <div class="row wrap"><input id="timerSeconds" aria-label="Timer duration in seconds" type="number" min="1" max="86400" value="300" /><button id="timerSet">Set</button><button id="timerStart">Start</button><button id="timerStop">Stop</button><button id="timerReset">Reset</button></div>
+              <p id="timerPreview" class="tool-value">--:--</p>
+            </section>
+            <section>
+              <p class="section-label">Stopwatch</p>
+              <div class="row wrap"><button id="swStart">Start</button><button id="swStop">Stop</button><button id="swReset">Reset</button></div>
+              <p id="swPreview" class="tool-value">00:00.000</p>
+            </section>
+            <section class="random-tool">
+              <p class="section-label">Random selector</p>
+              <textarea id="randomOptions" rows="3" placeholder="One option per line"></textarea>
+              <div class="row wrap"><button id="randomSave">Save</button><button id="randomRoll">Roll</button></div>
+              <p id="randomPreview" class="tool-value">No selection</p>
+            </section>
           </div>
-          <p id="swPreview" class="muted">00:00.000</p>
-        </div>
-
-        <div>
-          <h2>Random Selector</h2>
-          <textarea id="randomOptions" rows="4" placeholder="One option per line"></textarea>
-          <div class="row wrap">
-            <button id="randomSave">Save Options</button>
-            <button id="randomRoll">Roll</button>
-          </div>
-          <p id="randomPreview" class="muted">No selection</p>
-        </div>
-      </section>
+      </details>
     </main>
 
     <script src="/socket.io/socket.io.js"></script>
