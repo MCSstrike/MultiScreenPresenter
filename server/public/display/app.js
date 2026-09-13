@@ -4,6 +4,7 @@ const displayId = params.get("displayId") || `display-${Math.random().toString(1
 const screenId = params.get("screenId") || displayId;
 
 const stage = document.getElementById("stage");
+const hud = document.getElementById("hud");
 const displayIdText = document.getElementById("displayIdText");
 const connState = document.getElementById("connState");
 const fullscreenBtn = document.getElementById("fullscreenBtn");
@@ -23,12 +24,14 @@ function isFullscreenActive() {
   return Boolean(document.fullscreenElement);
 }
 
-function updateFullscreenButtonVisibility() {
-  if (!fullscreenBtn) {
-    return;
+function updateFullscreenUi() {
+  const isFs = isFullscreenActive();
+  if (fullscreenBtn) {
+    fullscreenBtn.classList.toggle("hidden", isFs);
   }
-
-  fullscreenBtn.classList.toggle("hidden", isFullscreenActive());
+  if (hud) {
+    hud.classList.toggle("hidden", isFs);
+  }
 }
 
 async function requestFullscreenMode() {
@@ -438,8 +441,8 @@ if (fullscreenBtn) {
   fullscreenBtn.addEventListener("click", requestFullscreenMode);
 }
 
-document.addEventListener("fullscreenchange", updateFullscreenButtonVisibility);
-updateFullscreenButtonVisibility();
+document.addEventListener("fullscreenchange", updateFullscreenUi);
+updateFullscreenUi();
 
 setInterval(tickWidgets, 100);
 setInterval(updateMediaStats, 1000);

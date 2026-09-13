@@ -30,6 +30,12 @@ body {
   opacity: 0.8;
 }
 
+#hud.hidden,
+:fullscreen #hud,
+:-webkit-full-screen #hud {
+  display: none;
+}
+
 #hud span {
   background: rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.15);
