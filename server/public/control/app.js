@@ -482,6 +482,54 @@ function buildSlotControls(state, screen) {
   }
 }
 
+let controlLastRollId = null;
+let controlRollTimer = null;
+
+function updateControlRandomState(state) {
+  const rs = state?.randomSelector;
+  const rollBtn = document.getElementById("randomRoll");
+  if (!rs || !randomPreview || !rollBtn) return;
+
+  if (rs.rollId && rs.rollId !== controlLastRollId && rs.rolledAt) {
+    controlLastRollId = rs.rollId;
+    const elapsed = Date.now() - rs.rolledAt;
+    const remaining = Math.max(0, (rs.durationMs || 3800) - elapsed);
+
+    if (remaining > 0 && rs.options.length > 0) {
+      if (controlRollTimer) clearInterval(controlRollTimer);
+      rollBtn.classList.add("is-rolling");
+      randomPreview.classList.add("is-rolling");
+      randomPreview.classList.remove("is-winner");
+
+      const startTime = Date.now();
+      controlRollTimer = setInterval(() => {
+        const timePassed = Date.now() - startTime;
+        if (timePassed >= remaining) {
+          clearInterval(controlRollTimer);
+          controlRollTimer = null;
+          rollBtn.classList.remove("is-rolling");
+          randomPreview.classList.remove("is-rolling");
+          randomPreview.textContent = rs.selected || "No selection";
+          if (rs.selected) {
+            randomPreview.classList.add("is-winner");
+          }
+        } else {
+          const randIdx = Math.floor(Math.random() * rs.options.length);
+          randomPreview.textContent = `🎲 ${rs.options[randIdx]}`;
+        }
+      }, 70);
+      return;
+    }
+  }
+
+  if (!controlRollTimer) {
+    rollBtn.classList.remove("is-rolling");
+    randomPreview.classList.remove("is-rolling");
+    randomPreview.textContent = rs.selected || "No selection";
+    randomPreview.classList.toggle("is-winner", Boolean(rs.selected));
+  }
+}
+
 function renderState(state) {
   latestState = state;
   const activeScreen = getActiveScreen(state);
@@ -494,7 +542,7 @@ function renderState(state) {
   });
   timerPreview.textContent = formatTimer(computeTimer(state));
   swPreview.textContent = formatStopwatch(computeStopwatch(state));
-  randomPreview.textContent = state.randomSelector.selected || "No selection";
+  updateControlRandomState(state);
 }
 
 function describeShareError(err) {
@@ -867,6 +915,34 @@ document.getElementById("randomSave").onclick = () => {
 };
 
 document.getElementById("randomRoll").onclick = () => socket.emit("random:roll");
+
+const presetNamesBtn = document.getElementById("randomPresetNames");
+if (presetNamesBtn) {
+  presetNamesBtn.onclick = () => {
+    randomOptions.value = ["Alice", "Bob", "Charlie", "Diana", "Ethan", "Fiona", "George", "Hannah"].join("\n");
+  };
+}
+
+const presetPrizesBtn = document.getElementById("randomPresetPrizes");
+if (presetPrizesBtn) {
+  presetPrizesBtn.onclick = () => {
+    randomOptions.value = ["🏆 Grand Prize", "💻 Laptop", "📱 Smartphone", "🎧 Noise-Cancelling Headphones", "☕ $50 Coffee Card", "🎒 Tech Backpack"].join("\n");
+  };
+}
+
+const presetNumbersBtn = document.getElementById("randomPresetNumbers");
+if (presetNumbersBtn) {
+  presetNumbersBtn.onclick = () => {
+    randomOptions.value = Array.from({ length: 10 }, (_, i) => `Number ${i + 1}`).join("\n");
+  };
+}
+
+const randomClearBtn = document.getElementById("randomClear");
+if (randomClearBtn) {
+  randomClearBtn.onclick = () => {
+    randomOptions.value = "";
+  };
+}
 
 slideshowUploadBtn.addEventListener("click", createSlideshowFromSelectedFiles);
 slideshowUploadPptxBtn.addEventListener("click", createSlideshowFromPptx);

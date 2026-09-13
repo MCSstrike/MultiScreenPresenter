@@ -112,10 +112,24 @@
               <p id="swPreview" class="tool-value">00:00.000</p>
             </section>
             <section class="random-tool">
-              <p class="section-label">Random selector</p>
-              <textarea id="randomOptions" rows="3" placeholder="One option per line"></textarea>
-              <div class="row wrap"><button id="randomSave">Save</button><button id="randomRoll">Roll</button></div>
-              <p id="randomPreview" class="tool-value">No selection</p>
+              <div class="row spread align-center">
+                <p class="section-label">Random selector</p>
+                <div class="row wrap gap-xs">
+                  <button type="button" class="btn-xs" id="randomPresetNames" title="Load sample names">Names</button>
+                  <button type="button" class="btn-xs" id="randomPresetPrizes" title="Load sample prizes">Prizes</button>
+                  <button type="button" class="btn-xs" id="randomPresetNumbers" title="Load numbers 1-10">1-10</button>
+                  <button type="button" class="btn-xs btn-ghost" id="randomClear" title="Clear options">Clear</button>
+                </div>
+              </div>
+              <textarea id="randomOptions" rows="3" placeholder="One option per line (e.g. Alice&#10;Bob&#10;Charlie)"></textarea>
+              <div class="row wrap">
+                <button id="randomSave">Save Options</button>
+                <button id="randomRoll" class="btn-roll">🎲 Roll Randomizer</button>
+              </div>
+              <div class="random-preview-wrap">
+                <span class="random-preview-label">Selected:</span>
+                <p id="randomPreview" class="random-preview-badge">No selection</p>
+              </div>
             </section>
           </div>
       </details>

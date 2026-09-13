@@ -344,6 +344,107 @@ input {
 
 .tools-grid .random-tool {
   grid-column: 1 / -1;
+  background: rgba(13, 128, 109, 0.03);
+  border: 1px solid rgba(13, 128, 109, 0.15);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.spread {
+  justify-content: space-between;
+}
+
+.gap-xs {
+  gap: 0.35rem;
+}
+
+.btn-xs {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  min-height: auto;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink);
+}
+
+.btn-roll {
+  background: linear-gradient(135deg, #0d806d, #075c4f);
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 4px 12px rgba(13, 128, 109, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-roll:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(13, 128, 109, 0.4);
+}
+
+.btn-roll.is-rolling {
+  animation: rollPulse 0.4s infinite alternate;
+  background: linear-gradient(135deg, #e11d48, #be123c);
+}
+
+.random-preview-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+
+.random-preview-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.random-preview-badge {
+  margin: 0;
+  padding: 0.2rem 0.7rem;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ink);
+  transition: all 0.3s ease;
+}
+
+.random-preview-badge.is-rolling {
+  color: #e11d48;
+  animation: rollTextPulse 0.2s infinite alternate;
+}
+
+.random-preview-badge.is-winner {
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
+
+@keyframes rollPulse {
+  0% { transform: scale(0.98); opacity: 0.9; }
+  100% { transform: scale(1.02); opacity: 1; }
+}
+
+@keyframes rollTextPulse {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
 }
 
 .tool-value {

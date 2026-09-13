@@ -115,6 +115,9 @@ const state = {
   randomSelector: {
     options: [],
     selected: null,
+    rollId: null,
+    rolledAt: null,
+    durationMs: 3800,
     updatedAt: Date.now()
   },
   slideshows: []
@@ -900,6 +903,8 @@ io.on("connection", (socket) => {
       : [];
     state.randomSelector.options = cleaned;
     state.randomSelector.selected = null;
+    state.randomSelector.rollId = null;
+    state.randomSelector.rolledAt = null;
     state.randomSelector.updatedAt = nowMs();
     broadcastState();
   });
@@ -907,9 +912,14 @@ io.on("connection", (socket) => {
   socket.on("random:roll", () => {
     if (!state.randomSelector.options.length) {
       state.randomSelector.selected = null;
+      state.randomSelector.rollId = null;
+      state.randomSelector.rolledAt = null;
     } else {
       const idx = Math.floor(Math.random() * state.randomSelector.options.length);
       state.randomSelector.selected = state.randomSelector.options[idx];
+      state.randomSelector.rollId = `roll_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+      state.randomSelector.rolledAt = nowMs();
+      state.randomSelector.durationMs = 3800;
     }
     state.randomSelector.updatedAt = nowMs();
     broadcastState();
