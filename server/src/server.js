@@ -3,6 +3,7 @@ const fs = require("fs");
 const os = require("os");
 const crypto = require("crypto");
 const { spawn } = require("child_process");
+const { Readable } = require("stream");
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
@@ -93,7 +94,8 @@ function createScreen(screenId, name) {
     name: String(name || "Screen"),
     layout: "single",
     slotCount: 1,
-    slots: createDefaultSlots()
+    slots: createDefaultSlots(),
+    audioSourceId: null
   };
 }
 
@@ -122,6 +124,160 @@ const state = {
   },
   slideshows: []
 };
+
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
+const ADMIN_FILE = path.join(DATA_DIR, "admin.json");
+const DEFAULT_VIEW_MODES = ["none", "printers", "clock", "script"];
+const MAX_SCRIPT_LENGTH = 20000;
+const PRINTER_POLL_MS = 5000;
+
+const admin = {
+  idleTimeoutSec: 60,
+  defaults: {}, // screenId -> { mode, script }
+  printers: [] // { id, name, baseUrl, apiKey, cameraUrl, enabled }
+};
+const printerStatus = new Map(); // printerId -> { printing, status, progress, error }
+const screenActivity = new Map(); // screenId -> last activity ms
+const idleScreens = new Set();
+
+function loadAdminSettings() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(ADMIN_FILE, "utf8"));
+    admin.idleTimeoutSec = clampIdleTimeoutSec(saved.idleTimeoutSec);
+    admin.defaults = saved.defaults && typeof saved.defaults === "object" ? saved.defaults : {};
+    admin.printers = Array.isArray(saved.printers) ? saved.printers : [];
+  } catch (_err) {
+    // No saved settings yet.
+  }
+}
+
+function saveAdminSettings() {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(ADMIN_FILE, JSON.stringify(admin, null, 2));
+  } catch (err) {
+    console.error("Failed to save admin settings", err);
+  }
+}
+
+function clampIdleTimeoutSec(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(5, Math.min(86400, Math.round(n))) : 60;
+}
+
+function normalizeBaseUrl(value) {
+  const raw = String(value || "").trim().replace(/\/+$/, "");
+  try {
+    const url = new URL(raw);
+    return ["http:", "https:"].includes(url.protocol) ? raw : null;
+  } catch (_err) {
+    return null;
+  }
+}
+
+function getPrinter(printerId) {
+  return admin.printers.find((printer) => printer.id === printerId) || null;
+}
+
+function printerCameraUrl(printer) {
+  const custom = String(printer.cameraUrl || "").trim();
+  try {
+    return new URL(custom || "/webcam/?action=stream", `${printer.baseUrl}/`).toString();
+  } catch (_err) {
+    return null;
+  }
+}
+
+async function pollPrinter(printer) {
+  try {
+    const res = await fetch(`${printer.baseUrl}/api/job`, {
+      headers: { "X-Api-Key": printer.apiKey || "" },
+      signal: AbortSignal.timeout(4000)
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const job = await res.json();
+    const status = String(job.state || "Unknown");
+    return {
+      printing: /^printing/i.test(status),
+      status,
+      progress: Number.isFinite(job.progress?.completion) ? Math.round(job.progress.completion) : null,
+      error: null
+    };
+  } catch (err) {
+    return { printing: false, status: "Unreachable", progress: null, error: String(err.message || err) };
+  }
+}
+
+async function pollPrinters() {
+  const printers = admin.printers.filter((printer) => printer.enabled);
+  const results = await Promise.all(printers.map((printer) => pollPrinter(printer)));
+  let changed = false;
+  const seen = new Set();
+  printers.forEach((printer, index) => {
+    seen.add(printer.id);
+    const next = results[index];
+    const prev = printerStatus.get(printer.id);
+    if (!prev || prev.printing !== next.printing || prev.status !== next.status || prev.progress !== next.progress || prev.error !== next.error) {
+      printerStatus.set(printer.id, next);
+      changed = true;
+    }
+  });
+  for (const id of [...printerStatus.keys()]) {
+    if (!seen.has(id)) {
+      printerStatus.delete(id);
+      changed = true;
+    }
+  }
+  if (changed) {
+    broadcastState();
+  }
+}
+
+function touchScreen(screenId) {
+  screenActivity.set(screenId, nowMs());
+}
+
+function touchAllScreens() {
+  state.screens.forEach((screen) => touchScreen(screen.screenId));
+}
+
+function screenIsBusy(screen) {
+  return screen.slots
+    .filter((slot) => slot.slotId <= screen.slotCount)
+    .some((slot) => {
+      if (slot.kind === "stream") return slot.sourceId && streamSources.has(slot.sourceId);
+      if (slot.kind === "slideshow") return getSlideshow(slot.slideshowId)?.playing;
+      if (slot.kind === "timer") return state.timer.running;
+      if (slot.kind === "stopwatch") return state.stopwatch.running;
+      return false;
+    });
+}
+
+function screenIsIdle(screen) {
+  const view = admin.defaults[screen.screenId];
+  if (!view || view.mode === "none" || screenIsBusy(screen)) {
+    return false;
+  }
+  const last = screenActivity.get(screen.screenId) || 0;
+  return nowMs() - last > admin.idleTimeoutSec * 1000;
+}
+
+function updateIdleScreens() {
+  let changed = false;
+  for (const screen of state.screens) {
+    const idle = screenIsIdle(screen);
+    if (idle !== idleScreens.has(screen.screenId)) {
+      if (idle) idleScreens.add(screen.screenId);
+      else idleScreens.delete(screen.screenId);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+loadAdminSettings();
 
 const controllers = new Map(); // socketId -> { name }
 const displays = new Map(); // socketId -> { displayId, screenId }
@@ -385,8 +541,18 @@ function getPublicState() {
     activeScreenId: state.activeScreenId,
     screens: state.screens.map((screen) => ({
       ...screen,
+      idle: idleScreens.has(screen.screenId),
       slots: screen.slots.map((slot) => ({ ...slot }))
     })),
+    admin: {
+      idleTimeoutSec: admin.idleTimeoutSec,
+      defaults: JSON.parse(JSON.stringify(admin.defaults)),
+      printers: admin.printers.map(({ apiKey, ...printer }) => ({
+        ...printer,
+        hasApiKey: Boolean(apiKey),
+        ...(printerStatus.get(printer.id) || { printing: false, status: "Unknown", progress: null, error: null })
+      }))
+    },
     timer: { ...state.timer },
     stopwatch: { ...state.stopwatch },
     randomSelector: {
@@ -432,6 +598,9 @@ function cleanupSource(sourceId) {
       if (slot.sourceId === sourceId) {
         slot.sourceId = null;
       }
+    }
+    if (screen.audioSourceId === sourceId) {
+      screen.audioSourceId = null;
     }
   }
 }
@@ -546,6 +715,36 @@ app.post("/api/slideshows/pptx", pptxUpload.single("pptx"), async (req, res) => 
   }
 });
 
+app.get("/api/printers/:printerId/stream", async (req, res) => {
+  const printer = getPrinter(String(req.params.printerId || ""));
+  const target = printer && printerCameraUrl(printer);
+  if (!target) {
+    return res.status(404).end();
+  }
+
+  const controller = new AbortController();
+  res.on("close", () => controller.abort());
+
+  try {
+    const upstream = await fetch(target, {
+      headers: { "X-Api-Key": printer.apiKey || "" },
+      signal: controller.signal
+    });
+    if (!upstream.ok || !upstream.body) {
+      return res.status(502).end();
+    }
+    res.setHeader("Content-Type", upstream.headers.get("content-type") || "multipart/x-mixed-replace");
+    res.setHeader("Cache-Control", "no-store");
+    Readable.fromWeb(upstream.body)
+      .on("error", () => res.end())
+      .pipe(res);
+  } catch (_err) {
+    if (!res.headersSent) {
+      res.status(502).end();
+    }
+  }
+});
+
 app.delete("/api/slideshows/:slideshowId", (req, res) => {
   const slideshowId = String(req.params.slideshowId || "");
   const removed = removeSlideshow(slideshowId);
@@ -608,6 +807,11 @@ function assignSourceToScreen(screenId, sourceId) {
   targetSlot.kind = "stream";
   targetSlot.sourceId = sourceId;
   targetSlot.slideshowId = null;
+
+  // Default the screen's audio to the first stream assigned to it.
+  if (!screen.audioSourceId) {
+    screen.audioSourceId = sourceId;
+  }
 }
 
 function removeControllerSources(socketId) {
@@ -666,12 +870,94 @@ setInterval(() => {
     }
   }
 
+  if (updateIdleScreens()) {
+    changed = true;
+  }
+
   if (changed) {
     broadcastState();
   }
 }, 200);
 
+setInterval(pollPrinters, PRINTER_POLL_MS);
+pollPrinters();
+
+const ACTIVITY_IGNORED_PREFIXES = ["register:", "admin:", "webrtc:", "stream:"];
+
 io.on("connection", (socket) => {
+  socket.onAny((event, payload) => {
+    if (!controllers.has(socket.id) || ACTIVITY_IGNORED_PREFIXES.some((prefix) => event.startsWith(prefix))) {
+      return;
+    }
+    if (event === "source:start") {
+      touchScreen(state.activeScreenId);
+    } else if (payload && typeof payload.screenId === "string" && getScreen(payload.screenId)) {
+      touchScreen(payload.screenId);
+    } else {
+      touchAllScreens();
+    }
+    if (updateIdleScreens()) {
+      broadcastState();
+    }
+  });
+
+  socket.on("admin:set-idle-timeout", ({ idleTimeoutSec }) => {
+    if (!controllers.has(socket.id)) return;
+    admin.idleTimeoutSec = clampIdleTimeoutSec(idleTimeoutSec);
+    saveAdminSettings();
+    updateIdleScreens();
+    broadcastState();
+  });
+
+  socket.on("admin:set-default", ({ screenId, mode, script }) => {
+    if (!controllers.has(socket.id) || !getScreen(screenId) || !DEFAULT_VIEW_MODES.includes(mode)) return;
+    admin.defaults[screenId] = {
+      mode,
+      script: String(script || "").slice(0, MAX_SCRIPT_LENGTH)
+    };
+    saveAdminSettings();
+    updateIdleScreens();
+    broadcastState();
+  });
+
+  socket.on("admin:save-printer", ({ id, name, baseUrl, apiKey, cameraUrl, enabled }) => {
+    if (!controllers.has(socket.id)) return;
+    const safeUrl = normalizeBaseUrl(baseUrl);
+    if (!safeUrl) {
+      socket.emit("admin:error", { message: "Printer URL must be a valid http(s) address." });
+      return;
+    }
+
+    let printer = id ? getPrinter(id) : null;
+    if (!printer) {
+      if (admin.printers.length >= 8) {
+        socket.emit("admin:error", { message: "Maximum of 8 printers." });
+        return;
+      }
+      printer = { id: `printer_${crypto.randomUUID().slice(0, 8)}`, apiKey: "" };
+      admin.printers.push(printer);
+    }
+    printer.name = String(name || "").trim().slice(0, 60) || "Printer";
+    printer.baseUrl = safeUrl;
+    printer.cameraUrl = String(cameraUrl || "").trim().slice(0, 300);
+    printer.enabled = enabled !== false;
+    if (typeof apiKey === "string" && apiKey.trim()) {
+      printer.apiKey = apiKey.trim();
+    }
+    saveAdminSettings();
+    printerStatus.delete(printer.id);
+    broadcastState();
+    pollPrinters();
+  });
+
+  socket.on("admin:remove-printer", ({ id }) => {
+    if (!controllers.has(socket.id)) return;
+    admin.printers = admin.printers.filter((printer) => printer.id !== id);
+    printerStatus.delete(id);
+    saveAdminSettings();
+    broadcastState();
+  });
+
   socket.on("register:controller", ({ name }) => {
     controllers.set(socket.id, { name: String(name || "Controller") });
     socket.emit("state:init", getPublicState());
@@ -701,6 +987,18 @@ io.on("connection", (socket) => {
     const screenId = makeScreenId();
     const screen = ensureScreen(screenId, String(name || getNextScreenName()));
     state.activeScreenId = screen.screenId;
+    broadcastState();
+  });
+
+  socket.on("screen:set-audio-source", ({ screenId, sourceId }) => {
+    const screen = getScreen(screenId) || getActiveScreen();
+    if (!screen) {
+      return;
+    }
+    if (sourceId && !streamSources.has(sourceId)) {
+      return;
+    }
+    screen.audioSourceId = sourceId || null;
     broadcastState();
   });
 
@@ -766,6 +1064,12 @@ io.on("connection", (socket) => {
 
     if (kind === "clock") {
       slot.timezone = String(timezone || "UTC");
+    }
+
+    if (!screen.audioSourceId && slot.sourceId) {
+      screen.audioSourceId = slot.sourceId;
+    } else if (screen.audioSourceId && !screen.slots.some((s) => s.sourceId === screen.audioSourceId)) {
+      screen.audioSourceId = null;
     }
 
     broadcastState();

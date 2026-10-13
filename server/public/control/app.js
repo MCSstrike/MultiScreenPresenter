@@ -37,9 +37,12 @@ const randomPreview = document.getElementById("randomPreview");
 const randomSaveBtn = document.getElementById("randomSave");
 const randomRollBtn = document.getElementById("randomRoll");
 const layoutButtons = Array.from(document.querySelectorAll("[data-layout]"));
+const audioSourceSelect = document.getElementById("audioSourceSelect");
 
 import { initRandomControl } from "./modules/random-control.js";
 const randomControl = initRandomControl(socket, randomOptions, randomPreview, randomSaveBtn, randomRollBtn);
+import { initAdminControl } from "./modules/admin-control.js";
+const adminControl = initAdminControl(socket, (state = latestState) => getActiveScreen(state));
 
 const pcBySourceAndTarget = new Map();
 const localStreams = new Map();
@@ -378,6 +381,41 @@ function buildScreenTabs(state) {
   removeScreenBtn.disabled = (state.screens || []).length <= 1;
 }
 
+function buildAudioSourceSelect(state, screen) {
+  if (!audioSourceSelect) return;
+  audioSourceSelect.innerHTML = "";
+  if (!screen) return;
+
+  const streams = state.streams || [];
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = "Muted";
+  audioSourceSelect.appendChild(none);
+
+  streams.forEach((st) => {
+    const usedInSlot = screen.slots.some((slot) => slot.slotId <= screen.slotCount && slot.sourceId === st.sourceId);
+    if (!usedInSlot) return;
+    const opt = document.createElement("option");
+    opt.value = st.sourceId;
+    opt.textContent = `${st.label} (${st.sourceId.slice(0, 10)})`;
+    if (screen.audioSourceId === st.sourceId) opt.selected = true;
+    audioSourceSelect.appendChild(opt);
+  });
+
+  if (!screen.audioSourceId) {
+    none.selected = true;
+  }
+}
+
+audioSourceSelect?.addEventListener("change", () => {
+  const activeScreen = getActiveScreen();
+  if (!activeScreen) return;
+  socket.emit("screen:set-audio-source", {
+    screenId: activeScreen.screenId,
+    sourceId: audioSourceSelect.value || null
+  });
+});
+
 function buildSlotControls(state, screen) {
   slotControls.innerHTML = "";
   if (!screen) {
@@ -493,6 +531,7 @@ function renderState(state) {
   buildScreenTabs(state);
   renderSlideshowControls(state);
   buildSlotControls(state, activeScreen);
+  buildAudioSourceSelect(state, activeScreen);
   updateDisplayLink(activeScreen);
   layoutButtons.forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.layout === activeScreen?.layout);
@@ -500,6 +539,7 @@ function renderState(state) {
   timerPreview.textContent = formatTimer(computeTimer(state));
   swPreview.textContent = formatStopwatch(computeStopwatch(state));
   randomControl.updateState(state);
+  adminControl.updateState(state);
 }
 
 function describeShareError(err) {

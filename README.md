@@ -19,6 +19,17 @@ A local-first, low-latency multiscreen presentation system with:
   - Set auto-advance speed and control play/pause/next/previous
   - PowerPoint also supported via exported slide images (PNG/JPG)
 
+## Admin setup (idle default views)
+
+Open **Admin setup** on the Control page to:
+
+- Set the idle timeout (default 60s). A screen is idle when no controller has interacted with it for that long and it is not showing a live stream, a playing slideshow, or a running timer/stopwatch.
+- Choose a default view per screen: none, clock, **3D printer cameras**, or a **custom script**.
+- Add OctoPrint instances (URL + API key, optional camera URL; default `/webcam/?action=stream`). The server polls `/api/job` every 5s. Printers that are printing are shown on the idle screen: one full-screen, two split side by side, three or four in a grid. With nothing printing, a clock is shown. Camera feeds are proxied through the server, so the API key never reaches displays and HTTPS pages don't hit mixed-content blocks.
+- Custom scripts run in the display browser as `function (root, screen, state)`; optionally return a cleanup function. They are unsandboxed, so only use code you trust.
+
+Settings persist in `DATA_DIR` (default `server/data`, a Docker volume in compose).
+
 ## Architecture
 
 - **Server**: Node.js + Express + Socket.IO

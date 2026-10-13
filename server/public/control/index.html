@@ -57,6 +57,10 @@
                 <button data-layout="grid-2x2">Grid</button>
               </div>
         </div>
+          <div class="config-block">
+              <p class="section-label">Audio</p>
+              <select id="audioSourceSelect" aria-label="Screen audio source"></select>
+        </div>
           <div class="config-block slot-config">
               <p class="section-label">Slots</p>
               <div id="slotControls" class="stack"></div>
@@ -124,6 +128,48 @@
               </div>
             </section>
           </div>
+      </details>
+
+      <details class="control-group" id="adminGroup">
+        <summary><span>Admin setup</span><span class="summary-hint">Idle default views and 3D printers</span></summary>
+        <div class="group-content">
+          <div class="config-block">
+            <p class="section-label">Idle timeout</p>
+            <div class="row wrap">
+              <input id="idleTimeoutSec" aria-label="Idle timeout in seconds" type="number" min="5" max="86400" step="5" value="60" />
+              <span class="muted">seconds of no control activity before the default view is shown</span>
+              <button id="idleTimeoutSave">Save</button>
+            </div>
+          </div>
+          <div class="config-block">
+            <p class="section-label">Default view for <span id="adminScreenName">this screen</span></p>
+            <div class="row wrap">
+              <select id="defaultMode" aria-label="Default view">
+                <option value="none">None (keep current content)</option>
+                <option value="printers">3D printer cameras (when printing)</option>
+                <option value="clock">Clock</option>
+                <option value="script">Custom script</option>
+              </select>
+              <button id="defaultSave">Save</button>
+            </div>
+            <textarea id="defaultScript" rows="8" spellcheck="false" placeholder="// Runs in the display browser. Available: root (element), screen, state.&#10;// Optionally return a cleanup function.&#10;root.textContent = 'Hello';"></textarea>
+            <p class="muted">Custom scripts run unsandboxed on the display. Only use code you trust.</p>
+          </div>
+          <div class="config-block">
+            <p class="section-label">OctoPrint printers</p>
+            <div id="printerList" class="stack"></div>
+            <div class="slot-panel">
+              <div class="row wrap">
+                <input id="printerName" aria-label="Printer name" placeholder="Name" />
+                <input id="printerUrl" aria-label="OctoPrint URL" placeholder="http://octopi.local" />
+                <input id="printerKey" aria-label="API key" type="password" placeholder="API key" autocomplete="off" />
+                <input id="printerCamera" aria-label="Camera stream URL" placeholder="Camera URL (default /webcam/?action=stream)" />
+                <button id="printerSave">Add printer</button>
+              </div>
+              <p id="adminStatus" class="muted"></p>
+            </div>
+          </div>
+        </div>
       </details>
     </main>
 

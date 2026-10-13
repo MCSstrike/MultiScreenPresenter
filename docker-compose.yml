@@ -8,7 +8,9 @@ services:
     environment:
       - PORT=${PORT:-3000}
       - ORIGIN=${ORIGIN:-*}
+      - DATA_DIR=/app/data
     volumes:
+      - multiscreen_data:/app/data
       - caddy_data:/caddy-data:ro
     restart: unless-stopped
 
@@ -29,5 +31,6 @@ services:
     restart: unless-stopped
 
 volumes:
+  multiscreen_data:
   caddy_data:
   caddy_config:

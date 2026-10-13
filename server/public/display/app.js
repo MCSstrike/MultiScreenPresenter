@@ -8,6 +8,7 @@ const hud = document.getElementById("hud");
 const displayIdText = document.getElementById("displayIdText");
 const connState = document.getElementById("connState");
 const fullscreenBtn = document.getElementById("fullscreenBtn");
+const audioUnlockBtn = document.getElementById("audioUnlockBtn");
 const mediaStats = document.getElementById("mediaStats");
 
 displayIdText.textContent = `Display: ${displayId} | Screen: ${screenId}`;
@@ -16,9 +17,28 @@ const pcBySource = new Map();
 const mediaBySource = new Map();
 let currentState = null;
 let renderedLayoutKey = null;
+let audioUnlocked = false;
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  if (audioUnlockBtn) {
+    audioUnlockBtn.classList.add("hidden");
+  }
+  stage.querySelectorAll('video[data-audio-source="true"]').forEach((video) => {
+    video.muted = false;
+    video.play().catch(() => {});
+  });
+}
+
+document.addEventListener("click", unlockAudio, { passive: true });
+document.addEventListener("keydown", unlockAudio, { passive: true });
 
 import { buildClock, buildTimer, buildStopwatch } from "./widgets/clock-widgets.js";
 import { buildRandom, clearRandomWidgets, updateRandomWidgets } from "./widgets/random-selector/random-selector.js";
+import { getDefaultViewKey, renderDefaultView } from "./widgets/default-view.js";
+
+let defaultViewCleanup = null;
 
 function isFullscreenActive() {
   const isWindowFullscreen = Math.abs(window.innerHeight - screen.height) <= 2 && Math.abs(window.innerWidth - screen.width) <= 2;
@@ -181,7 +201,7 @@ function ensurePeerForSource(sourceId) {
   return pc;
 }
 
-function buildStream(sourceId) {
+function buildStream(sourceId, isAudioSource) {
   const slot = document.createElement("div");
   slot.className = "widget";
 
@@ -190,8 +210,14 @@ function buildStream(sourceId) {
     const video = document.createElement("video");
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = true;
     video.srcObject = stream;
+    video.dataset.audioSource = isAudioSource ? "true" : "false";
+    video.muted = !isAudioSource || !audioUnlocked;
+    if (isAudioSource && audioUnlocked) {
+      video.play().catch(() => {
+        video.muted = true;
+      });
+    }
     return video;
   }
 
@@ -235,7 +261,7 @@ function buildSlideshow(slideshowId, state) {
   return wrap;
 }
 
-function buildSlot(slotCfg, state) {
+function buildSlot(slotCfg, state, audioSourceId) {
   const slot = document.createElement("section");
   slot.className = "slot";
 
@@ -245,7 +271,7 @@ function buildSlot(slotCfg, state) {
 
   switch (slotCfg.kind) {
     case "stream":
-      slot.appendChild(buildStream(slotCfg.sourceId));
+      slot.appendChild(buildStream(slotCfg.sourceId, slotCfg.sourceId != null && slotCfg.sourceId === audioSourceId));
       break;
     case "slideshow":
       slot.appendChild(buildSlideshow(slotCfg.slideshowId, state));
@@ -263,7 +289,7 @@ function buildSlot(slotCfg, state) {
       slot.appendChild(buildRandom(state));
       break;
     default:
-      slot.appendChild(buildStream(slotCfg.sourceId));
+      slot.appendChild(buildStream(slotCfg.sourceId, slotCfg.sourceId != null && slotCfg.sourceId === audioSourceId));
       break;
   }
 
@@ -276,7 +302,7 @@ function getLayoutKey(screen) {
     const slot = screen.slots.find((item) => item.slotId === index + 1) || {};
     return [slot.kind, slot.sourceId, slot.slideshowId, slot.timezone, mediaBySource.has(slot.sourceId)].join(":");
   });
-  return `${screen.screenId}:${screen.layout}:${slotKey.join("|")}`;
+  return `${screen.screenId}:${screen.layout}:${screen.audioSourceId || ""}:${audioUnlocked}:${slotKey.join("|")}`;
 }
 
 function updateSlideshowImages(state) {
@@ -302,6 +328,24 @@ function renderState(state) {
   }
 
   displayIdText.textContent = `Display: ${displayId} | Screen: ${screen.screenId}`;
+
+  const defaultKey = getDefaultViewKey(screen, state);
+  if (defaultKey) {
+    const key = `default:${screen.screenId}:${defaultKey}`;
+    if (key !== renderedLayoutKey) {
+      clearRandomWidgets();
+      if (defaultViewCleanup) defaultViewCleanup();
+      defaultViewCleanup = renderDefaultView(stage, screen, state);
+      renderedLayoutKey = key;
+    }
+    tickWidgets();
+    return;
+  }
+
+  if (defaultViewCleanup) {
+    defaultViewCleanup();
+    defaultViewCleanup = null;
+  }
   const layoutKey = getLayoutKey(screen);
 
   if (layoutKey !== renderedLayoutKey) {
@@ -312,7 +356,7 @@ function renderState(state) {
 
     for (let i = 1; i <= slotCount; i += 1) {
       const cfg = screen.slots.find((slot) => slot.slotId === i);
-      stage.appendChild(buildSlot(cfg, state));
+      stage.appendChild(buildSlot(cfg, state, screen.audioSourceId));
     }
 
     renderedLayoutKey = layoutKey;
