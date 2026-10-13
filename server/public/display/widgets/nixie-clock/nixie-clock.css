@@ -1,0 +1,342 @@
+/* All sizes use cqw so the whole clock scales with .nixie-clock's width. */
+.nixie-clock {
+  container-type: inline-size;
+  width: min(74vw, calc(74vh * 2.55));
+  user-select: none;
+}
+
+/* Brushed gunmetal housing with a chamfered edge. */
+.nixie-case {
+  position: relative;
+  padding: 3.4cqw 6cqw 2.6cqw;
+  border-radius: 1.6cqw;
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0 0.08cqw, rgba(0, 0, 0, 0.08) 0.08cqw 0.22cqw),
+    linear-gradient(180deg, #4a4e55 0%, #2b2e33 14%, #1c1e22 52%, #26282d 100%);
+  border: 0.35cqw solid;
+  border-color: #7b8088 #34373c #17181b #50545b;
+  box-shadow:
+    0 0 0 0.25cqw #0a0a0b,
+    inset 0 0.2cqw 0.3cqw rgba(255, 255, 255, 0.16),
+    inset 0 -0.6cqw 1.4cqw rgba(0, 0, 0, 0.6),
+    0 1.4cqw 5cqw rgba(0, 0, 0, 0.9),
+    0 0 12cqw rgba(255, 110, 20, 0.14);
+}
+
+.nixie-case > * {
+  position: relative;
+}
+
+.nixie-case > .nixie-screw,
+.nixie-case > .nixie-vents {
+  position: absolute;
+}
+
+/* Hex-socket brass screws. */
+.nixie-screw {
+  width: 1.5cqw;
+  height: 1.5cqw;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f3d894, #b08535 52%, #54390f 100%);
+  box-shadow: 0 0.15cqw 0.3cqw rgba(0, 0, 0, 0.8), inset 0 0 0.15cqw rgba(0, 0, 0, 0.5);
+}
+
+.nixie-screw::after {
+  content: "";
+  position: absolute;
+  left: 30%;
+  top: 30%;
+  width: 40%;
+  height: 40%;
+  background: #1b1105;
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+}
+
+.nixie-screw-tl { top: 1cqw; left: 1cqw; }
+.nixie-screw-tr { top: 1cqw; right: 1cqw; }
+.nixie-screw-bl { bottom: 1cqw; left: 1cqw; }
+.nixie-screw-br { bottom: 1cqw; right: 1cqw; }
+
+.nixie-vents {
+  top: 7cqw;
+  bottom: 7cqw;
+  width: 1.8cqw;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.nixie-vents-left { left: 2cqw; }
+.nixie-vents-right { right: 2cqw; }
+
+.nixie-vent {
+  display: block;
+  height: 0.55cqw;
+  border-radius: 0.3cqw;
+  background: #050506;
+  box-shadow: inset 0 0.12cqw 0.2cqw #000, 0 0.1cqw 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Recessed black panel holding the tubes. */
+.nixie-bezel {
+  padding: 2.4cqw 2.2cqw 1.6cqw;
+  border-radius: 1cqw;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 80% at 50% 70%, rgba(255, 110, 25, 0.16), transparent 70%),
+    linear-gradient(180deg, #050405, #0d0807 70%, #070404);
+  box-shadow:
+    0 0 0 0.3cqw #b48a3c,
+    0 0 0 0.5cqw #4d350e,
+    0 0 0 0.62cqw #0a0a0b,
+    inset 0 0.6cqw 1.6cqw #000,
+    inset 0 -0.2cqw 0.8cqw rgba(255, 120, 30, 0.12);
+}
+
+.nixie-tubes {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.9cqw;
+  animation: nixie-brightness 5s ease-in-out infinite;
+}
+
+.nixie-tube {
+  position: relative;
+  width: 11.2cqw;
+  height: 24cqw;
+  flex: none;
+}
+
+.nixie-glass {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 3.8cqw;
+  overflow: hidden;
+  border-radius: 5.6cqw 5.6cqw 0.8cqw 0.8cqw / 6.8cqw 6.8cqw 0.8cqw 0.8cqw;
+  background:
+    radial-gradient(ellipse at 50% 55%, rgba(255, 130, 35, 0.2), rgba(28, 11, 5, 0.9) 66%),
+    #080403;
+  border: 0.16cqw solid rgba(255, 215, 180, 0.28);
+  box-shadow:
+    inset 0 0 1.8cqw #000,
+    inset 0 0 0.5cqw rgba(255, 200, 140, 0.3),
+    0 0 3cqw rgba(255, 110, 20, 0.3);
+}
+
+/* Fine hexagonal anode honeycomb. */
+.nixie-honeycomb {
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  background:
+    linear-gradient(30deg, transparent 47%, rgba(210, 140, 80, 0.5) 48% 52%, transparent 53%),
+    linear-gradient(150deg, transparent 47%, rgba(210, 140, 80, 0.5) 48% 52%, transparent 53%),
+    linear-gradient(90deg, transparent 47%, rgba(210, 140, 80, 0.5) 48% 52%, transparent 53%);
+  background-size: 1cqw 1.74cqw;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 60%, #000 30%, transparent 95%);
+  mask-image: radial-gradient(ellipse at 50% 60%, #000 30%, transparent 95%);
+}
+
+.nixie-rod {
+  position: absolute;
+  top: 14%;
+  bottom: 0;
+  width: 0.26cqw;
+  background: linear-gradient(90deg, #5d4d3a, #d6c5a8, #4f4231);
+}
+
+.nixie-rod-left { left: 8%; }
+.nixie-rod-right { right: 8%; }
+
+.nixie-mica {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  height: 0.35cqw;
+  background: linear-gradient(90deg, rgba(190, 170, 140, 0.15), rgba(235, 215, 185, 0.4), rgba(190, 170, 140, 0.15));
+}
+
+.nixie-mica-top { top: 11%; }
+.nixie-mica-bottom { bottom: 3.5%; }
+
+.nixie-digits {
+  position: absolute;
+  left: 11%;
+  right: 11%;
+  top: 13%;
+  bottom: 7%;
+}
+
+.nixie-d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nx-halo { stroke: rgba(255, 110, 25, 0); stroke-width: 9; filter: blur(0.5cqw); }
+.nx-wire { stroke: #6d3516; stroke-width: 2.3; opacity: 0.6; }
+.nx-core { stroke: rgba(255, 210, 150, 0); stroke-width: 0.7; }
+
+.nixie-d.lit .nx-halo { stroke: rgba(255, 105, 20, 0.85); }
+.nixie-d.lit .nx-wire { stroke: #ff9a3c; stroke-width: 2.7; opacity: 1; }
+.nixie-d.lit .nx-core { stroke: #fff0cf; }
+.nixie-d.lit { filter: drop-shadow(0 0 0.7cqw rgba(255, 90, 0, 0.6)); }
+
+.nixie-getter {
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  top: 4.5%;
+  height: 4%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(200, 205, 210, 0.45), rgba(70, 72, 76, 0.2));
+  filter: blur(0.08cqw);
+}
+
+.nixie-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 52%, rgba(255, 125, 35, 0.3), transparent 62%);
+  mix-blend-mode: screen;
+  animation: nixie-pulse 5s ease-in-out infinite;
+}
+
+.nixie-shine {
+  position: absolute;
+  left: 9%;
+  top: 12%;
+  width: 11%;
+  height: 68%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.05) 80%, transparent);
+  filter: blur(0.12cqw);
+  transform: rotate(3deg);
+}
+
+.nixie-shine-right {
+  position: absolute;
+  right: 7%;
+  top: 22%;
+  width: 3%;
+  height: 52%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 220, 180, 0.28), transparent);
+  filter: blur(0.1cqw);
+}
+
+.nixie-shine-top {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  top: 2%;
+  height: 9%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent);
+  filter: blur(0.1cqw);
+}
+
+.nixie-tip {
+  position: absolute;
+  left: 50%;
+  top: 0.5cqw;
+  width: 0.9cqw;
+  height: 0.5cqw;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #f3efe8, #8a8379 70%);
+}
+
+.nixie-base {
+  position: absolute;
+  left: 1.3cqw;
+  right: 1.3cqw;
+  bottom: 0;
+  height: 4.8cqw;
+  border-radius: 0.4cqw 0.4cqw 1cqw 1cqw;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 0.1cqw, transparent 0.1cqw 0.45cqw),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.5), rgba(255, 255, 255, 0.2) 28%, rgba(0, 0, 0, 0.1) 55%, rgba(0, 0, 0, 0.55)),
+    linear-gradient(180deg, #d6ab5a, #8c6422 55%, #3f2a0b);
+  box-shadow: 0 0.3cqw 0.8cqw rgba(0, 0, 0, 0.8), inset 0 0.15cqw 0.2cqw rgba(255, 240, 200, 0.35);
+}
+
+.nixie-pins {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  bottom: 0.7cqw;
+  height: 1.2cqw;
+  background:
+    radial-gradient(circle at 50% 50%, #151008 0 0.28cqw, #d9d2c4 0.3cqw 0.48cqw, transparent 0.52cqw)
+    center / 1.5cqw 100% repeat-x;
+}
+
+.nixie-sep {
+  width: 3cqw;
+  height: 20cqw;
+  margin-bottom: 3.8cqw;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4cqw;
+}
+
+/* Neon indicator bulbs between the tube pairs. */
+.nixie-neon {
+  width: 1.5cqw;
+  height: 1.5cqw;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #fff3d6, #ffa040 45%, #c9480c 100%);
+  box-shadow:
+    0 0 0.5cqw #ffb35c,
+    0 0 1.6cqw rgba(255, 110, 20, 0.9),
+    0 0 3.6cqw rgba(255, 90, 0, 0.5);
+  animation: nixie-pulse 5s ease-in-out infinite;
+}
+
+/* Faint glass reflection across the whole panel. */
+.nixie-reflection {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 28%, transparent 29%);
+}
+
+.nixie-plate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2cqw;
+  margin-top: 2.2cqw;
+  padding: 0.9cqw 2.4cqw;
+  border-radius: 0.5cqw;
+  font-family: "Bahnschrift", "Segoe UI", Arial, sans-serif;
+  font-size: 1.6cqw;
+  letter-spacing: 0.3em;
+  white-space: nowrap;
+  color: #c9a45a;
+  text-shadow: 0 0 0.5cqw rgba(255, 150, 50, 0.45);
+  background: linear-gradient(180deg, #0a0a0b, #151517);
+  box-shadow: inset 0 0.15cqw 0.4cqw #000, 0 0.1cqw 0 rgba(255, 255, 255, 0.14), 0 0 0 0.2cqw #3a3d42;
+}
+
+@keyframes nixie-pulse {
+  0%, 100% { opacity: 0.82; }
+  50% { opacity: 1; }
+}
+
+@keyframes nixie-brightness {
+  0%, 100% { filter: brightness(0.95); }
+  50% { filter: brightness(1.05); }
+}
