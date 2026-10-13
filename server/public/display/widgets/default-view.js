@@ -56,6 +56,33 @@ function renderMessage(stage, text) {
   stage.appendChild(slot);
 }
 
+const CLOCK_MOVE_INTERVAL_MS = 30000;
+
+// Places the clock in a slot and periodically moves it to a new random position.
+function mountMovingClock(stage) {
+  stage.className = "layout-single";
+  const slot = document.createElement("section");
+  slot.className = "slot";
+
+  const mover = document.createElement("div");
+  mover.style.position = "absolute";
+  mover.style.transform = "translate(-50%, -50%)";
+  mover.style.transition = "left 3s ease-in-out, top 3s ease-in-out";
+  mover.style.whiteSpace = "nowrap";
+  mover.appendChild(buildClock({ timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }));
+  slot.appendChild(mover);
+  stage.appendChild(slot);
+
+  const place = () => {
+    mover.style.left = `${20 + Math.random() * 60}%`;
+    mover.style.top = `${15 + Math.random() * 70}%`;
+  };
+  mover.style.left = "50%";
+  mover.style.top = "50%";
+  const timer = setInterval(place, CLOCK_MOVE_INTERVAL_MS);
+  return () => clearInterval(timer);
+}
+
 // Renders the default view into the stage and returns an optional cleanup function.
 export function renderDefaultView(stage, screen, state) {
   const view = getDefaultView(screen, state);
@@ -64,12 +91,7 @@ export function renderDefaultView(stage, screen, state) {
   if (view.mode === "printers") {
     const printing = getPrintingPrinters(state);
     if (!printing.length) {
-      stage.className = "layout-single";
-      const slot = document.createElement("section");
-      slot.className = "slot";
-      slot.appendChild(buildClock({ timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }));
-      stage.appendChild(slot);
-      return null;
+      return mountMovingClock(stage);
     }
     stage.className = layoutForCount(printing.length);
     printing.forEach((printer) => stage.appendChild(buildPrinterSlot(printer)));
@@ -77,12 +99,7 @@ export function renderDefaultView(stage, screen, state) {
   }
 
   if (view.mode === "clock") {
-    stage.className = "layout-single";
-    const slot = document.createElement("section");
-    slot.className = "slot";
-    slot.appendChild(buildClock({ timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }));
-    stage.appendChild(slot);
-    return null;
+    return mountMovingClock(stage);
   }
 
   if (view.mode === "script") {
