@@ -56,39 +56,35 @@ function renderMessage(stage, text) {
   stage.appendChild(slot);
 }
 
-const CLOCK_MOVE_INTERVAL_MS = 30000;
+const CLOCK_MOVE_INTERVAL_MS = 10 * 60 * 1000;
+const CLOCK_MAX_SHIFT_PX = 12;
 
-// Places the clock in a slot and periodically moves it to a new random position.
+// Places the clock centred in a slot and, as an OLED burn-in guard, snaps it a few pixels every 10 minutes.
 function mountMovingClock(stage) {
   stage.className = "layout-single";
   const slot = document.createElement("section");
   slot.className = "slot";
 
   const mover = document.createElement("div");
-  mover.style.position = "absolute";
-  mover.style.transform = "translate(-50%, -50%)";
-  mover.style.transition = "left 3s ease-in-out, top 3s ease-in-out";
   mover.style.whiteSpace = "nowrap";
   const clock = buildNixieClock();
   mover.appendChild(clock.element);
   slot.appendChild(mover);
   stage.appendChild(slot);
 
-  // Keeps the whole clock (plus its trim) inside the slot while still drifting.
+  let lastX = 0;
+  let lastY = 0;
   const place = () => {
-    const sw = slot.clientWidth;
-    const sh = slot.clientHeight;
-    const mw = mover.offsetWidth;
-    const mh = mover.offsetHeight;
-    const marginX = mw * 0.03 + 4;
-    const marginY = mh * 0.03 + 4;
-    const spanX = Math.max(0, sw - mw - marginX * 2);
-    const spanY = Math.max(0, sh - mh - marginY * 2);
-    mover.style.left = `${mw / 2 + marginX + Math.random() * spanX}px`;
-    mover.style.top = `${mh / 2 + marginY + Math.random() * spanY}px`;
+    let x;
+    let y;
+    do {
+      x = Math.round((Math.random() * 2 - 1) * CLOCK_MAX_SHIFT_PX);
+      y = Math.round((Math.random() * 2 - 1) * CLOCK_MAX_SHIFT_PX);
+    } while (x === lastX && y === lastY);
+    lastX = x;
+    lastY = y;
+    mover.style.transform = `translate(${x}px, ${y}px)`;
   };
-  mover.style.left = "50%";
-  mover.style.top = "50%";
   const timer = setInterval(place, CLOCK_MOVE_INTERVAL_MS);
   return () => {
     clearInterval(timer);
